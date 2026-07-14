@@ -1,10 +1,17 @@
 <template>
   <div>
     <section class="hero">
-      <img
-        src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1800&q=84"
-        alt="서울과 산 능선이 보이는 여행 풍경"
-      />
+      <div class="hero-slides" aria-hidden="true">
+        <img
+          v-for="(image, index) in heroImages"
+          :key="image.src"
+          class="hero-slide"
+          :class="{ 'is-active': index === activeHeroIndex }"
+          :src="image.src"
+          :alt="image.alt"
+          :loading="index === 0 ? 'eager' : 'lazy'"
+        />
+      </div>
       <div class="hero-overlay"></div>
       <div class="hero-content container">
         <span class="eyebrow"><Sparkles :size="15" /> AI 기반 서울 여행 커뮤니티</span>
@@ -106,19 +113,44 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, CalendarDays, Map, MessageCircle, Search, Sparkles, Users } from '@lucide/vue'
 import MapPanel from '../components/MapPanel.vue'
 import PlaceCard from '../components/PlaceCard.vue'
 import StatBars from '../components/StatBars.vue'
+import seoulBuildingNight from '../assets/서울 대표 이미지/cskkkk-building-7619503.jpg'
+import seoulCityHall from '../assets/서울 대표 이미지/cskkkk-building-7648743.jpg'
+import seoulCitySunset from '../assets/서울 대표 이미지/cskkkk-city-7111380.jpg'
+import seoulCityNight from '../assets/서울 대표 이미지/cskkkk-city-7459162.jpg'
+import seoulHanokGate from '../assets/서울 대표 이미지/cskkkk-hanok-7095483.jpg'
+import seoulNamsanTower from '../assets/서울 대표 이미지/cskkkk-namsan-tower-7459178.jpg'
+import seoulSejong from '../assets/서울 대표 이미지/penny0618-sejong-2634869.jpg'
+import seoulStreet from '../assets/서울 대표 이미지/viarami-bar-5475279.jpg'
+import seoulPalace from '../assets/서울 대표 이미지/yujeong_huh-gyeongbok-palace-6854763.jpg'
 import { festivals, mapPins, places } from '../data/localhub'
 import { useCommunityStore } from '../stores/community'
+
+const HERO_SLIDE_INTERVAL_MS = 2000
 
 const router = useRouter()
 const keyword = ref('')
 const selectedPin = ref(null)
 const community = useCommunityStore()
+const activeHeroIndex = ref(0)
+let heroSlideTimerId = null
+
+const heroImages = [
+  { src: seoulBuildingNight, alt: '서울 롯데월드타워 야경' },
+  { src: seoulCityHall, alt: '서울 도심과 서울시청 풍경' },
+  { src: seoulCitySunset, alt: '노을빛이 드리운 서울 도심' },
+  { src: seoulCityNight, alt: '불빛이 켜진 서울 야경' },
+  { src: seoulHanokGate, alt: '서울 고궁 한옥 건축' },
+  { src: seoulNamsanTower, alt: '파란 하늘 아래 남산서울타워' },
+  { src: seoulSejong, alt: '광화문 세종대왕 동상' },
+  { src: seoulStreet, alt: '서울 도심 골목 상권' },
+  { src: seoulPalace, alt: '경복궁 전통 처마와 궁궐' },
+]
 
 const stats = computed(() => [
   { label: '관광/숙박 데이터', value: places.length, icon: Map },
@@ -134,6 +166,20 @@ const barItems = computed(() => [
   { label: '후기', value: community.state.posts.length, percent: 68, color: '#f59e0b' },
 ])
 
+onMounted(() => {
+  if (heroImages.length < 2) return
+
+  heroSlideTimerId = window.setInterval(() => {
+    activeHeroIndex.value = (activeHeroIndex.value + 1) % heroImages.length
+  }, HERO_SLIDE_INTERVAL_MS)
+})
+
+onBeforeUnmount(() => {
+  if (heroSlideTimerId) {
+    window.clearInterval(heroSlideTimerId)
+  }
+})
+
 function goSearch() {
   router.push({ path: '/explore', query: { q: keyword.value } })
 }
@@ -147,7 +193,8 @@ function goSearch() {
   color: #fff;
 }
 
-.hero img,
+.hero-slides,
+.hero-slide,
 .hero-overlay {
   position: absolute;
   inset: 0;
@@ -155,14 +202,29 @@ function goSearch() {
   height: 100%;
 }
 
-.hero img {
+.hero-slides {
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.hero-slide {
   object-fit: cover;
+  opacity: 0;
+  transform: scale(1.025);
+  transition:
+    opacity 900ms ease,
+    transform 2200ms ease;
+}
+
+.hero-slide.is-active {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .hero-overlay {
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.46), rgba(15, 23, 42, 0.74)),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.1));
+    linear-gradient(180deg, rgba(15, 23, 42, 0.14), rgba(15, 23, 42, 0.28)),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.32), rgba(15, 23, 42, 0.04));
 }
 
 .hero-content {
