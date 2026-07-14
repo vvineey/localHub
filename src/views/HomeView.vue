@@ -8,7 +8,7 @@
       <div class="hero-overlay"></div>
       <div class="hero-content container">
         <span class="eyebrow"><Sparkles :size="15" /> AI 기반 서울 여행 커뮤니티</span>
-        <h1>LocalHub Seoul</h1>
+        <h1>LocalHub</h1>
         <p>서울 관광지, 축제, 숙박, 익명 여행 후기를 하나의 SPA에서 탐색하세요.</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
