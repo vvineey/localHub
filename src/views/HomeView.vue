@@ -14,12 +14,12 @@
       </div>
       <div class="hero-overlay"></div>
       <div class="hero-content container">
-        <span class="eyebrow"><Sparkles :size="15" /> AI 기반 서울 여행 커뮤니티</span>
-        <h1>LocalHub</h1>
-        <p>서울 관광지, 축제, 숙박, 익명 여행 후기를 하나의 SPA에서 탐색하세요.</p>
+        <span class="eyebrow"><Sparkles :size="15" /> 현지인이 고른 서울 여행 큐레이션</span>
+        <h1>현지 In</h1>
+        <p>유명한 코스보다 오늘 가기 좋은 동네 장소와 생생한 후기를 먼저 만나보세요.</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
-          <input v-model="keyword" type="search" placeholder="관광지, 축제, 후기 검색" />
+          <input v-model="keyword" type="search" placeholder="동네, 분위기, 현지 추천 검색" />
           <button class="btn btn-primary" type="submit">검색</button>
         </form>
       </div>
@@ -41,7 +41,7 @@
       <div class="container popular-showcase">
         <aside class="popular-copy" aria-live="polite">
           <div class="popular-copy-inner">
-            <div class="popular-progress" aria-label="인기 관광지 위치">
+            <div class="popular-progress" aria-label="오늘의 현지 추천 위치">
               <span
                 v-for="(place, index) in showcasePlaces"
                 :key="place.id"
@@ -54,7 +54,8 @@
                 <span class="popular-count">
                   {{ formattedActiveShowcaseIndex }} / {{ formattedShowcaseTotal }}
                 </span>
-                <h3>인기 관광지</h3>
+                <span class="popular-kicker">LOCAL PICK</span>
+                <h3>현지인이 추천하는<br />오늘의 관광지</h3>
                 <p class="popular-place-name">{{ activeShowcasePlace.name }}</p>
                 <p class="popular-summary">{{ activeShowcasePlace.summary }}</p>
                 <div class="popular-meta">
@@ -93,15 +94,14 @@
     <section class="section split-band">
       <div class="container split-layout">
         <div>
-          <span class="badge green">지도 시각화</span>
-          <h2>카테고리별 핀으로 서울 여행 동선을 빠르게 확인</h2>
+          <span class="badge green">동네별 큐레이션</span>
+          <h2>현지 추천 장소를 지도 위에서 가볍게 이어보세요</h2>
           <p>
-            RFP의 선택 기능 중 구현 난이도 대비 임팩트가 큰 지도 시각화를 CSS 기반
-            인터랙션으로 구성했습니다. FastAPI에서 좌표 데이터를 내려주면 동일한 구조로
-            교체할 수 있습니다.
+            카페, 산책길, 축제, 숙소를 지역별로 묶어 오늘 일정에 맞는 이동 동선을 빠르게
+            확인할 수 있습니다.
           </p>
           <RouterLink class="btn btn-primary" to="/map">
-            지도 열기 <Map :size="16" />
+            지도에서 보기 <Map :size="16" />
           </RouterLink>
         </div>
         <MapPanel :pins="homeMapPins.slice(0, 7)" @select="selectedPin = $event" />
@@ -113,8 +113,8 @@
         <div>
           <div class="section-title compact">
             <div>
-              <h2>이번 달 축제</h2>
-              <p>7월 일정 중심으로 빠르게 비교합니다.</p>
+              <h2>이번 달 동네 축제</h2>
+              <p>지금 가기 좋은 서울 행사를 골라봅니다.</p>
             </div>
             <RouterLink class="btn btn-ghost" to="/festivals">캘린더</RouterLink>
           </div>
@@ -137,8 +137,8 @@
         <div>
           <div class="section-title compact">
             <div>
-              <h2>데이터 대시보드</h2>
-              <p>발표용 현황 그래프입니다.</p>
+              <h2>현지 추천 지표</h2>
+              <p>장소 유형과 후기 흐름을 한눈에 봅니다.</p>
             </div>
           </div>
           <StatBars :items="barItems" />
@@ -197,15 +197,15 @@ const heroImages = [
 ]
 
 const stats = computed(() => [
-  { label: '관광/숙박 데이터', value: homePlaces.value.length.toLocaleString(), icon: Map },
-  { label: '축제 일정', value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
-  { label: '커뮤니티 후기', value: community.state.posts.length, icon: Users },
-  { label: 'AI 질의 유형', value: 5, icon: MessageCircle },
+  { label: '현지 추천 장소', value: homePlaces.value.length.toLocaleString(), icon: Map },
+  { label: '동네 축제 일정', value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
+  { label: '여행자 후기', value: community.state.posts.length, icon: Users },
+  { label: 'AI 큐레이션', value: 5, icon: MessageCircle },
 ])
 
 const barItems = computed(() => [
   {
-    label: '관광지',
+    label: '추천 장소',
     value: homePlaces.value.filter((item) => item.type === 'attraction').length,
     percent: 84,
     color: '#2563eb',
@@ -365,8 +365,9 @@ function goSearch() {
 .hero h1 {
   max-width: 760px;
   margin: 18px 0 14px;
-  font-size: clamp(3rem, 7vw, 5.5rem);
-  line-height: 0.96;
+  font-size: clamp(2.85rem, 6vw, 4.85rem);
+  line-height: 1.02;
+  letter-spacing: 0;
 }
 
 .hero p {
@@ -452,8 +453,8 @@ function goSearch() {
 
 .popular-copy-inner {
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 22px;
   width: 100%;
 }
 
@@ -482,36 +483,48 @@ function goSearch() {
 }
 
 .popular-text {
-  min-height: 390px;
+  min-height: 360px;
 }
 
 .popular-count {
   display: block;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   color: var(--primary);
   font-size: 0.84rem;
   font-weight: 850;
 }
 
+.popular-kicker {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
 .popular-text h3 {
   margin: 0;
   color: var(--text);
-  font-size: clamp(2.6rem, 5vw, 4.8rem);
-  line-height: 0.98;
+  font-size: clamp(1.8rem, 2.8vw, 2.85rem);
+  line-height: 1.16;
+  letter-spacing: 0;
 }
 
 .popular-place-name {
-  margin: 12px 0 0;
+  margin: 18px 0 0;
   color: #60646c;
-  font-size: clamp(2rem, 4.1vw, 3.8rem);
-  line-height: 1.05;
+  font-size: clamp(1.55rem, 2.7vw, 2.65rem);
+  line-height: 1.14;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
 .popular-summary {
   max-width: 430px;
-  margin: 58px 0 18px;
+  margin: 32px 0 18px;
   color: #4b5563;
-  font-size: 1.02rem;
+  font-size: 0.98rem;
   line-height: 1.72;
 }
 
@@ -619,8 +632,9 @@ function goSearch() {
 }
 
 .popular-visual-overlay strong {
-  font-size: clamp(2rem, 4vw, 4.2rem);
-  line-height: 0.98;
+  font-size: clamp(1.8rem, 3.3vw, 3.35rem);
+  line-height: 1.04;
+  letter-spacing: 0;
 }
 
 .split-band {
@@ -712,7 +726,7 @@ function goSearch() {
   }
 
   .popular-copy-inner {
-    grid-template-columns: 68px minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr);
   }
 
   .popular-text {
@@ -720,7 +734,7 @@ function goSearch() {
   }
 
   .popular-summary {
-    margin-top: 30px;
+    margin-top: 24px;
   }
 
   .popular-visual-card {
@@ -766,11 +780,11 @@ function goSearch() {
   }
 
   .popular-text h3 {
-    font-size: 2.4rem;
+    font-size: 2rem;
   }
 
   .popular-place-name {
-    font-size: 2rem;
+    font-size: 1.72rem;
   }
 
   .popular-visual-card {
