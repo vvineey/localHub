@@ -100,7 +100,7 @@ onMounted(async () => {
   justify-content: space-between;
   grid-column: 1 / -1;
   padding: 18px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .calendar-head h2 {
@@ -111,7 +111,7 @@ onMounted(async () => {
 .blank-cell,
 .day-cell {
   min-height: 58px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .weekday {
@@ -150,7 +150,7 @@ onMounted(async () => {
   display: block;
   overflow: hidden;
   padding: 4px 6px;
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-radius: 6px;
   font-size: 0.72rem;
@@ -165,7 +165,7 @@ onMounted(async () => {
 }
 
 .event-panel {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 18px;
