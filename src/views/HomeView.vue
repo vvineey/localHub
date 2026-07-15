@@ -104,7 +104,7 @@
             지도 열기 <Map :size="16" />
           </RouterLink>
         </div>
-        <MapPanel :pins="mapPins.slice(0, 7)" @select="selectedPin = $event" />
+        <MapPanel :pins="homeMapPins.slice(0, 7)" @select="selectedPin = $event" />
       </div>
     </section>
 
@@ -120,7 +120,7 @@
           </div>
           <div class="festival-list">
             <RouterLink
-              v-for="festival in festivals.slice(0, 3)"
+              v-for="festival in homeFestivals.slice(0, 3)"
               :key="festival.id"
               class="festival-row card"
               to="/festivals"
@@ -149,21 +149,13 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowRight, CalendarDays, Map, MapPin, MessageCircle, Search, Sparkles, Star, Users } from '@lucide/vue'
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
-import seoulBuildingNight from '../assets/서울 대표 이미지/cskkkk-building-7619503.jpg'
-import seoulCityHall from '../assets/서울 대표 이미지/cskkkk-building-7648743.jpg'
-import seoulCitySunset from '../assets/서울 대표 이미지/cskkkk-city-7111380.jpg'
-import seoulCityNight from '../assets/서울 대표 이미지/cskkkk-city-7459162.jpg'
-import seoulHanokGate from '../assets/서울 대표 이미지/cskkkk-hanok-7095483.jpg'
-import seoulNamsanTower from '../assets/서울 대표 이미지/cskkkk-namsan-tower-7459178.jpg'
-import seoulSejong from '../assets/서울 대표 이미지/penny0618-sejong-2634869.jpg'
-import seoulStreet from '../assets/서울 대표 이미지/viarami-bar-5475279.jpg'
-import seoulPalace from '../assets/서울 대표 이미지/yujeong_huh-gyeongbok-palace-6854763.jpg'
-import { festivals, mapPins, places } from '../data/localhub'
+import { festivals as fallbackFestivals, mapPins as fallbackMapPins, places as fallbackPlaces } from '../data/localhub'
+import { fetchFestivals, fetchMapPins, fetchPlaces } from '../services/localHubApi'
 import { useCommunityStore } from '../stores/community'
 
 const HERO_SLIDE_INTERVAL_MS = 2000
@@ -175,36 +167,65 @@ const community = useCommunityStore()
 const activeHeroIndex = ref(0)
 const activeShowcaseIndex = ref(0)
 const showcaseCardRefs = ref([])
+const homePlaces = ref([...fallbackPlaces])
+const homeFestivals = ref([...fallbackFestivals])
+const homeMapPins = ref([...fallbackMapPins])
 let heroSlideTimerId = null
 let showcaseObserver = null
 
 const heroImages = [
-  { src: seoulBuildingNight, alt: '서울 롯데월드타워 야경' },
-  { src: seoulCityHall, alt: '서울 도심과 서울시청 풍경' },
-  { src: seoulCitySunset, alt: '노을빛이 드리운 서울 도심' },
-  { src: seoulCityNight, alt: '불빛이 켜진 서울 야경' },
-  { src: seoulHanokGate, alt: '서울 고궁 한옥 건축' },
-  { src: seoulNamsanTower, alt: '파란 하늘 아래 남산서울타워' },
-  { src: seoulSejong, alt: '광화문 세종대왕 동상' },
-  { src: seoulStreet, alt: '서울 도심 골목 상권' },
-  { src: seoulPalace, alt: '경복궁 전통 처마와 궁궐' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/46/3551346_image2_1.jpg', alt: '양화한강공원' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/95/3530095_image2_1.jpg', alt: '효사정' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/26/3403926_image2_1.JPG', alt: '허브체험공원' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/90/3525890_image2_1.JPG', alt: '진관사(서울)' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/99/3580599_image2_1.jpg', alt: '서울숲' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/34/3538134_image2_1.jpg', alt: '청계천' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/10/2907610_image2_1.jpg', alt: '석촌호수' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/02/3304402_image2_1.jpg', alt: '북촌 8경' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/63/3580663_image2_1.jpg', alt: '이화벽화마을' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/23/4063023_image2_1.jpg', alt: '하늘공원' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/04/3566904_image2_1.jpg', alt: '수락산 당고개지구 공원' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/65/3463465_image2_1.jpg', alt: '춘풍양조장' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/07/4061307_image2_1.jpg', alt: '반포한강공원' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/00/3304300_image2_1.jpg', alt: '롯데월드 어드벤처' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/84/4070284_image2_1.jpg', alt: '서해금빛열차' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/27/3535027_image2_1.jpg', alt: '용산공원 부분개방부지' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/92/4065492_image2_1.jpg', alt: '[종로둘레길 3코스] 낙산 코스' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/97/3570497_image2_1.jpg', alt: '신선경과 류인호 묘역' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/19/4064219_image2_1.jpg', alt: '수국사(서울)' },
+  { src: 'https://tong.visitkorea.or.kr/cms/resource/55/4063655_image2_1.jpg', alt: '문래창작촌' },
 ]
 
 const stats = computed(() => [
-  { label: '관광/숙박 데이터', value: places.length, icon: Map },
-  { label: '축제 일정', value: festivals.length, icon: CalendarDays },
+  { label: '관광/숙박 데이터', value: homePlaces.value.length.toLocaleString(), icon: Map },
+  { label: '축제 일정', value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
   { label: '커뮤니티 후기', value: community.state.posts.length, icon: Users },
   { label: 'AI 질의 유형', value: 5, icon: MessageCircle },
 ])
 
 const barItems = computed(() => [
-  { label: '관광지', value: places.filter((item) => item.type === 'attraction').length, percent: 84, color: '#2563eb' },
-  { label: '자연/산책', value: places.filter((item) => item.type === 'nature').length, percent: 48, color: '#10b981' },
-  { label: '숙박', value: places.filter((item) => item.type === 'accommodation').length, percent: 32, color: '#06b6d4' },
+  {
+    label: '관광지',
+    value: homePlaces.value.filter((item) => item.type === 'attraction').length,
+    percent: 84,
+    color: '#2563eb',
+  },
+  {
+    label: '자연/산책',
+    value: homePlaces.value.filter((item) => item.type === 'nature').length,
+    percent: 48,
+    color: '#10b981',
+  },
+  {
+    label: '숙박',
+    value: homePlaces.value.filter((item) => item.type === 'accommodation').length,
+    percent: 32,
+    color: '#06b6d4',
+  },
   { label: '후기', value: community.state.posts.length, percent: 68, color: '#f59e0b' },
 ])
 
-const showcasePlaces = computed(() => places.slice(0, 3))
+const showcasePlaces = computed(() => homePlaces.value.slice(0, 3))
 const activeShowcasePlace = computed(
   () => showcasePlaces.value[activeShowcaseIndex.value] ?? showcasePlaces.value[0],
 )
@@ -219,14 +240,12 @@ function setShowcaseCardRef(element, index) {
   }
 }
 
-onMounted(() => {
-  if (heroImages.length < 2) return
-
-  heroSlideTimerId = window.setInterval(() => {
-    activeHeroIndex.value = (activeHeroIndex.value + 1) % heroImages.length
-  }, HERO_SLIDE_INTERVAL_MS)
-
+function observeShowcaseCards() {
   if ('IntersectionObserver' in window) {
+    if (showcaseObserver) {
+      showcaseObserver.disconnect()
+    }
+
     showcaseObserver = new IntersectionObserver(
       (entries) => {
         const visibleEntry = entries
@@ -247,6 +266,32 @@ onMounted(() => {
       showcaseObserver.observe(element)
     })
   }
+}
+
+async function loadHomeData() {
+  const [places, festivals, pins] = await Promise.all([
+    fetchPlaces(),
+    fetchFestivals(),
+    fetchMapPins({ max: 24 }),
+  ])
+
+  homePlaces.value = places
+  homeFestivals.value = festivals
+  homeMapPins.value = pins
+  activeShowcaseIndex.value = 0
+  await nextTick()
+  observeShowcaseCards()
+}
+
+onMounted(() => {
+  if (heroImages.length > 1) {
+    heroSlideTimerId = window.setInterval(() => {
+      activeHeroIndex.value = (activeHeroIndex.value + 1) % heroImages.length
+    }, HERO_SLIDE_INTERVAL_MS)
+  }
+
+  observeShowcaseCards()
+  loadHomeData()
 })
 
 onBeforeUnmount(() => {
@@ -448,7 +493,7 @@ function goSearch() {
   font-weight: 850;
 }
 
-.popular-text h2 {
+.popular-text h3 {
   margin: 0;
   color: var(--text);
   font-size: clamp(2.6rem, 5vw, 4.8rem);
@@ -720,7 +765,7 @@ function goSearch() {
     width: 48px;
   }
 
-  .popular-text h2 {
+  .popular-text h3 {
     font-size: 2.4rem;
   }
 
