@@ -28,14 +28,19 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  userLocation: {
+    type: Object,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'mapclick'])
 const { locale, t } = useI18n()
 const mapElement = ref(null)
 const map = shallowRef(null)
 const kakaoMaps = shallowRef(null)
 const overlays = shallowRef([])
+const locationMarker = shallowRef(null)
 const activeOverlay = shallowRef(null)
 const statusState = ref(hasKakaoMapAppKey() ? 'loading' : 'missingKey')
 const statusTitle = computed(() => {
@@ -67,6 +72,31 @@ function clearOverlays() {
   overlays.value.forEach((overlay) => overlay.setMap(null))
   overlays.value = []
   activeOverlay.value = null
+
+  if (locationMarker.value) {
+    locationMarker.value.setMap(null)
+    locationMarker.value = null
+  }
+}
+
+function renderLocationMarker() {
+  if (!kakaoMaps.value || !map.value) return
+
+  if (locationMarker.value) {
+    locationMarker.value.setMap(null)
+    locationMarker.value = null
+  }
+
+  const lat = Number(props.userLocation?.lat)
+  const lng = Number(props.userLocation?.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+  const position = new kakaoMaps.value.LatLng(lat, lng)
+  locationMarker.value = new kakaoMaps.value.Marker({
+    map: map.value,
+    position,
+    title: t('map.currentLocationMarker'),
+  })
 }
 
 function createPinElement(pin) {
@@ -107,6 +137,13 @@ function fitMapToPins() {
   coordinatePins.value.forEach((pin) => {
     bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
   })
+
+  const lat = Number(props.userLocation?.lat)
+  const lng = Number(props.userLocation?.lng)
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    bounds.extend(new kakaoMaps.value.LatLng(lat, lng))
+  }
+
   map.value.setBounds(bounds, 48, 48, 48, 48)
 }
 
@@ -138,6 +175,7 @@ function renderOverlays() {
     overlays.value = [...overlays.value, overlay]
   })
 
+  renderLocationMarker()
   fitMapToPins()
 }
 
@@ -152,6 +190,7 @@ function initializeMap(kakao) {
 
   map.value.addControl(new kakaoMaps.value.ZoomControl(), kakaoMaps.value.ControlPosition.RIGHT)
   map.value.addControl(new kakaoMaps.value.MapTypeControl(), kakaoMaps.value.ControlPosition.TOPRIGHT)
+  map.value.addListener('click', () => emit('mapclick'))
   statusState.value = ''
   renderOverlays()
 }
@@ -167,7 +206,9 @@ onMounted(async () => {
   }
 })
 
-watch(coordinatePins, renderOverlays, { flush: 'post' })
+watch([coordinatePins, () => props.userLocation?.lat, () => props.userLocation?.lng], renderOverlays, {
+  flush: 'post',
+})
 watch(locale, renderOverlays)
 
 onBeforeUnmount(() => {

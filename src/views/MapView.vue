@@ -23,7 +23,8 @@
             </div>
             <span class="count-pill">{{ t('common.itemsShown', { count: filteredPins.length.toLocaleString() }) }}</span>
           </div>
-          <MapPanel :pins="filteredPins" @select="handleSelect" />
+          <p class="map-hint">{{ t('map.clickHint') }}</p>
+          <MapPanel :pins="filteredPins" :userLocation="userLocation" @select="handleSelect" @mapclick="handleMapClick" />
         </div>
 
         <aside class="map-side">
@@ -74,6 +75,7 @@ const selectedRegion = ref(null)
 const selectedRegionError = ref('')
 const selectedRegionLoading = ref(false)
 const mapPins = ref([...fallbackMapPins])
+const userLocation = ref(null)
 let regionRequestId = 0
 
 const filters = computed(() => [
@@ -135,6 +137,58 @@ function labelFor(type) {
   return filters.value.find((filter) => filter.id === type)?.label || type
 }
 
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const toRadians = (degree) => (degree * Math.PI) / 180
+  const R = 6371
+  const dLat = toRadians(lat2 - lat1)
+  const dLng = toRadians(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+function sortPinsByLocation(location) {
+  if (!location || !Array.isArray(mapPins.value)) return
+
+  const { lat: userLat, lng: userLng } = location
+  if (!Number.isFinite(userLat) || !Number.isFinite(userLng)) return
+
+  mapPins.value = [...mapPins.value].sort((a, b) => {
+    const distA = haversineDistance(userLat, userLng, Number(a.lat), Number(a.lng))
+    const distB = haversineDistance(userLat, userLng, Number(b.lat), Number(b.lng))
+    return distA - distB
+  })
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation unavailable'))
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({ lat: position.coords.latitude, lng: position.coords.longitude })
+      },
+      (error) => reject(error),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    )
+  })
+}
+
+async function handleMapClick() {
+  try {
+    const location = await getCurrentPosition()
+    userLocation.value = location
+    sortPinsByLocation(location)
+  } catch (error) {
+    console.warn('현재 위치를 가져올 수 없습니다.', error)
+  }
+}
+
 async function handleSelect(pin) {
   selected.value = pin
   selectedRegion.value = null
@@ -165,6 +219,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.map-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
 .map-layout {
   display: grid;
   grid-template-columns: 1fr 330px;

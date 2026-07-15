@@ -160,6 +160,7 @@ const messages = {
       noRegionResult: '조회 결과 없음',
       kakaoRequired: 'Kakao API 설정 필요',
       noCoordinate: '좌표 미제공',
+      currentLocationMarker: '현재 위치',
     },
     festivals: {
       title: '축제 캘린더',
@@ -370,6 +371,8 @@ const messages = {
       noRegionResult: 'No result',
       kakaoRequired: 'Kakao API setup required',
       noCoordinate: 'No coordinates',
+      currentLocationMarker: 'Current location',
+      clickHint: 'Click the map to sort places by distance from your current location.',
     },
     festivals: {
       title: 'Festival Calendar',
@@ -580,6 +583,8 @@ const messages = {
       noRegionResult: '无查询结果',
       kakaoRequired: '需要设置 Kakao API',
       noCoordinate: '暂无坐标',
+      currentLocationMarker: '当前位置',
+      clickHint: '点击地图即可根据当前位置优先展示附近地点。',
     },
     festivals: {
       title: '庆典日历',
@@ -790,6 +795,8 @@ const messages = {
       noRegionResult: '照会結果なし',
       kakaoRequired: 'Kakao API設定が必要',
       noCoordinate: '座標未提供',
+      currentLocationMarker: '現在地',
+      clickHint: '地図をクリックすると、現在地に近いスポットが優先表示されます。',
     },
     festivals: {
       title: '祭りカレンダー',
