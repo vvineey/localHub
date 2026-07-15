@@ -53,7 +53,8 @@ function confirm() {
 .modal-panel {
   width: min(420px, 100%);
   padding: 22px;
-  background: #fff;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
 }
@@ -84,6 +85,7 @@ input {
   min-height: 44px;
   padding: 0 12px;
   color: var(--text);
+  background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   outline: 0;
