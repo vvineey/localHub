@@ -387,25 +387,49 @@ function goSearch() {
   width: min(700px, 100%);
   min-height: 64px;
   padding: 8px 8px 8px 18px;
-  color: var(--muted);
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 22px 58px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.hero-search svg {
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .hero-search input {
   flex: 1;
   min-width: 0;
-  color: var(--text);
+  color: #fff;
   background: transparent;
   border: 0;
   outline: 0;
   appearance: none;
-  caret-color: var(--text);
+  caret-color: #fff;
 }
 
 .hero-search input::placeholder {
-  color: var(--muted-light);
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.hero-search .btn {
+  min-width: 72px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.hero-search .btn:hover {
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .hero-search input::-webkit-search-cancel-button,
@@ -540,13 +564,14 @@ function goSearch() {
   display: inline-flex;
   max-width: 100%;
   padding: 10px 16px 11px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.66);
   border-radius: 999px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 18px 42px rgba(15, 23, 42, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 18px 42px rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
 }
 
 .popular-summary {
