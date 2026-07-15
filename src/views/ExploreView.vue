@@ -25,7 +25,11 @@
         </div>
       </div>
 
-      <div v-if="filteredPlaces.length" class="grid grid-3">
+      <div v-if="isLoading" class="empty-state panel">
+        <Search :size="38" />
+        <p>백엔드 여행정보를 불러오는 중입니다.</p>
+      </div>
+      <div v-else-if="filteredPlaces.length" class="grid grid-3">
         <PlaceCard v-for="place in filteredPlaces" :key="place.id" :place="place" />
       </div>
       <div v-else class="empty-state panel">
@@ -37,15 +41,22 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search } from '@lucide/vue'
 import PlaceCard from '../components/PlaceCard.vue'
-import { categories, places } from '../data/localhub'
+import {
+  fallbackCategories,
+  fetchCategories,
+  fetchPlaces,
+} from '../services/localHubApi'
 
 const route = useRoute()
 const keyword = ref(String(route.query.q || ''))
 const activeCategory = ref('전체')
+const categories = ref([...fallbackCategories])
+const places = ref([])
+const isLoading = ref(true)
 
 watch(
   () => route.query.q,
@@ -56,7 +67,7 @@ watch(
 
 const filteredPlaces = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
-  return places.filter((place) => {
+  return places.value.filter((place) => {
     const matchKeyword =
       !normalized ||
       [place.name, place.category, place.district, place.address, place.summary, ...place.tags]
@@ -66,6 +77,16 @@ const filteredPlaces = computed(() => {
     const matchCategory = activeCategory.value === '전체' || place.category === activeCategory.value
     return matchKeyword && matchCategory
   })
+})
+
+onMounted(async () => {
+  try {
+    const [loadedPlaces, loadedCategories] = await Promise.all([fetchPlaces(), fetchCategories()])
+    places.value = loadedPlaces
+    categories.value = loadedCategories
+  } finally {
+    isLoading.value = false
+  }
 })
 </script>
 
