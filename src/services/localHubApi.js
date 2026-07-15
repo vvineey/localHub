@@ -211,6 +211,7 @@ export async function fetchPlacesPage({
   category = '전체',
   page = 1,
   pageSize = 9,
+  fallbackOnError = true,
 } = {}) {
   const safePage = Math.max(1, Number(page) || 1)
   const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 9))
@@ -240,6 +241,17 @@ export async function fetchPlacesPage({
       pagination: normalizePagination(payload.pagination, safePage, safePageSize, items.length),
     }
   } catch {
+    if (!fallbackOnError) {
+      return {
+        items: [],
+        pagination: {
+          page: safePage,
+          size: safePageSize,
+          total: 0,
+        },
+      }
+    }
+
     const places = await loadApiPlaces()
     const filteredPlaces = places.filter((place) => matchesPlace(place, keyword, category))
     const pageItems = filteredPlaces.slice(skip, skip + safePageSize)
