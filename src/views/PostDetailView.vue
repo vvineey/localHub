@@ -38,25 +38,29 @@
         </article>
 
         <form class="comment-form" @submit.prevent="submitComment">
-          <input
-            v-model="newComment.author_name"
-            type="text"
-            placeholder="작성자 이름 (선택)"
-          />
-          <textarea
-            v-model="newComment.content"
-            rows="3"
-            placeholder="댓글을 남겨보세요."
-            required
-          />
-          <input
-            v-model="newComment.password"
-            type="password"
-            placeholder="댓글 비밀번호"
-            required
-          />
-          <button class="btn btn-primary" type="submit">댓글 작성</button>
-        </form>
+  <div class="writer-info">
+    <input
+      v-model="newComment.author_name"
+      type="text"
+      placeholder="작성자 이름 (선택)"
+    />
+    <input
+      v-model="newComment.password"
+      type="password"
+      placeholder="댓글 비밀번호"
+      required
+    />
+  </div>
+  <div class="content-box">
+    <textarea
+      v-model="newComment.content"
+      rows="3"
+      placeholder="댓글을 남겨보세요."
+      required
+    />
+    <button class="btn btn-primary" type="submit">댓글 작성</button>
+  </div>
+</form>
       </section>
     </div>
 
@@ -254,48 +258,139 @@ footer > div {
 }
 
 .comments {
-  display: grid;
-  gap: 14px;
-  margin-top: 14px;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 24px;
 }
 
 .comments h2 {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border-bottom: 2px solid var(--line-soft);
+  padding-bottom: 12px;
 }
 
-.comments article {
-  padding-top: 14px;
-  border-top: 1px solid var(--line-soft);
+/* 개별 댓글 아이템 */
+.comment-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line-soft);
 }
 
-.comments strong,
-.comments time {
-  display: inline-block;
+.comment-item:last-of-type {
+  border-bottom: none;
 }
 
-.comments time {
+.comment-item strong {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.comment-item time {
   margin-left: 8px;
   color: var(--muted-light);
   font-size: 0.78rem;
 }
 
-.comments p {
+.comment-item p {
   margin: 8px 0 0;
   color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.6;
+  font-size: 0.92rem;
+  white-space: pre-line;
 }
 
-@media (max-width: 620px) {
-  footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
+.empty-comment {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--muted-light);
+  font-size: 0.9rem;
+}
 
-  footer > div,
-  footer .btn {
+/* 댓글 입력 폼 */
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid var(--line-soft);
+}
+
+/* 작성자 & 비밀번호 영역 (가로 병렬 배치) */
+.writer-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.writer-info input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.writer-info input:focus {
+  border-color: var(--primary);
+}
+
+/* 댓글 내용 & 등록 버튼 영역 */
+.content-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.content-box textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.content-box textarea:focus {
+  border-color: var(--primary);
+}
+
+.content-box .btn {
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  height: 40px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* 모바일 대응 (화면이 작을 때 레이아웃 조정) */
+@media (max-width: 620px) {
+  .writer-info {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .content-box {
+    align-items: stretch;
+  }
+  
+  .content-box .btn {
     width: 100%;
   }
-}
-</style>
+}</style>
