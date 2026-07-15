@@ -1,10 +1,10 @@
 <template>
-  <aside v-if="$route.name !== 'assistant'" class="chat-widget" aria-label="LocalHub AI 채팅 위젯">
+  <aside v-if="$route.name !== 'assistant'" class="chat-widget" aria-label="Local-In AI 채팅 위젯">
     <div v-if="open" class="widget-panel">
       <div class="widget-header">
         <div>
-          <strong>LocalHub AI</strong>
-          <span>서울 여행 비서</span>
+          <strong>Local-In AI</strong>
+          <span>서울 현지 여행 비서</span>
         </div>
         <button type="button" aria-label="채팅 닫기" title="닫기" @click="open = false">
           <X :size="17" />
@@ -41,13 +41,13 @@ import { askAssistant } from '../services/localHubApi'
 
 const now = () => new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 
-const quickPrompts = ['인기 명소', '7월 축제', '여행 예산']
+const quickPrompts = ['현지 추천', '7월 축제', '여행 예산']
 const open = ref(false)
 const loading = ref(false)
 const messages = ref([
   {
     role: 'assistant',
-    text: '안녕하세요. 서울 관광지, 축제, 숙박, 커뮤니티 후기를 기반으로 여행 질문에 답해드릴게요.',
+    text: '안녕하세요. 서울 현지 추천 장소, 축제, 숙박, 커뮤니티 후기를 기반으로 여행 질문에 답해드릴게요.',
     time: now(),
   },
 ])
@@ -80,7 +80,7 @@ async function send(text) {
   justify-content: center;
   width: 56px;
   height: 56px;
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-radius: 999px;
   box-shadow: 0 16px 34px rgba(37, 99, 235, 0.32);
@@ -93,7 +93,7 @@ async function send(text) {
   width: 14px;
   height: 14px;
   background: var(--green);
-  border: 2px solid #fff;
+  border: 2px solid var(--surface);
   border-radius: 999px;
 }
 
@@ -103,7 +103,7 @@ async function send(text) {
   width: min(360px, calc(100vw - 24px));
   height: 470px;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 22px 60px rgba(15, 23, 42, 0.2);
@@ -115,7 +115,7 @@ async function send(text) {
   justify-content: space-between;
   gap: 12px;
   padding: 13px 14px;
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
 }
 
@@ -126,7 +126,7 @@ async function send(text) {
 
 .widget-header span {
   margin-top: 2px;
-  color: rgba(255, 255, 255, 0.74);
+  color: color-mix(in srgb, var(--on-primary) 74%, transparent);
   font-size: 0.78rem;
 }
 
@@ -136,8 +136,8 @@ async function send(text) {
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: rgba(255, 255, 255, 0.82);
-  background: rgba(255, 255, 255, 0.12);
+  color: color-mix(in srgb, var(--on-primary) 82%, transparent);
+  background: color-mix(in srgb, var(--on-primary) 12%, transparent);
   border-radius: var(--radius);
 }
 
@@ -156,6 +156,11 @@ async function send(text) {
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+:global([data-theme='dark']) .quick-row button {
+  color: #fff;
+  border: 1px solid var(--line);
 }
 
 @media (max-width: 640px) {
