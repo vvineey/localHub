@@ -10,6 +10,7 @@
     </div>
 
     <section
+      v-if="isLocalPickReady && localPickCards.length"
       ref="pickSection"
       class="local-pick-section"
       :style="{ '--pick-scroll-distance': `${pickScrollDistance}px` }"
@@ -128,7 +129,6 @@ import {
   MessageSquare,
   Search,
 } from '@lucide/vue'
-import { places as fallbackLocalPickPlaces } from '../data/localhub'
 import { fetchPlacesPage } from '../services/localHubApi'
 import { useCommunityStore } from '../stores/community'
 
@@ -136,7 +136,8 @@ const store = useCommunityStore()
 const keyword = ref('')
 const activeCategory = ref('전체')
 const page = ref(1)
-const localPickPlaces = ref([...fallbackLocalPickPlaces])
+const localPickPlaces = ref([])
+const isLocalPickReady = ref(false)
 const pickSection = ref(null)
 const pickTrack = ref(null)
 const pickTranslateX = ref(0)
@@ -188,14 +189,26 @@ function measurePickScroll() {
   updatePickScroll()
 }
 
-async function loadLocalPickPlaces() {
-  const { items } = await fetchPlacesPage({ page: 1, pageSize: 6 })
+function observePickTrack() {
+  if (!('ResizeObserver' in window) || !pickTrack.value) return
 
-  if (items.length) {
-    localPickPlaces.value = items
-    await nextTick()
-    measurePickScroll()
-  }
+  pickResizeObserver?.disconnect()
+  pickResizeObserver = new ResizeObserver(measurePickScroll)
+  pickResizeObserver.observe(pickTrack.value)
+}
+
+async function loadLocalPickPlaces() {
+  const { items } = await fetchPlacesPage({
+    page: 1,
+    pageSize: 6,
+    fallbackOnError: false,
+  })
+
+  localPickPlaces.value = items
+  isLocalPickReady.value = true
+  await nextTick()
+  measurePickScroll()
+  observePickTrack()
 }
 
 watch([keyword, activeCategory], () => {
@@ -207,11 +220,6 @@ onMounted(async () => {
   measurePickScroll()
   window.addEventListener('scroll', updatePickScroll, { passive: true })
   window.addEventListener('resize', measurePickScroll)
-
-  if ('ResizeObserver' in window && pickTrack.value) {
-    pickResizeObserver = new ResizeObserver(measurePickScroll)
-    pickResizeObserver.observe(pickTrack.value)
-  }
 
   loadLocalPickPlaces()
 })
