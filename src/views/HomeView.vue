@@ -98,7 +98,7 @@
         <div class="hot-post-copy">
           <span class="badge green">{{ t('home.hotPostsBadge') }}</span>
           <h2>{{ t('home.hotPostsTitle') }}</h2>
-          <p>{{ t('home.hotPostsCopy') }}</p>
+          <p v-html="t('home.hotPostsCopy')"></p>
           <RouterLink class="btn btn-primary" to="/community">
             {{ t('home.viewHotPosts') }} <ArrowRight :size="16" />
           </RouterLink>

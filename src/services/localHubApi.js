@@ -279,6 +279,41 @@ function normalizePost(post = {}) {
   }
 }
 
+function sortPostsByViews(posts = []) {
+  return [...posts].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0) || Number(b.id) - Number(a.id))
+}
+
+async function fetchCommentPreview(postId) {
+  const comments = await requestJson(`/comments/posts/${postId}`)
+  return Array.isArray(comments) ? comments.map(normalizeComment) : []
+}
+
+async function withCommentPreview(posts = []) {
+  return Promise.all(
+    posts.map(async (post) => {
+      if (Array.isArray(post.comment_preview) && post.comment_preview.length) {
+        return post
+      }
+
+      try {
+        const comments = await fetchCommentPreview(post.id)
+        return {
+          ...post,
+          comments: post.comments || comments.length,
+          comment_preview: comments.slice(0, 5),
+        }
+      } catch {
+        return post
+      }
+    }),
+  )
+}
+
+async function fetchPopularPostsFromList(limit) {
+  const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100, sort: 'popular' })
+  return withCommentPreview(sortPostsByViews(items).slice(0, limit))
+}
+
 async function loadApiPlaces() {
   if (placesCache) return placesCache
   if (placesPromise) return placesPromise
@@ -424,9 +459,20 @@ export async function fetchCommunityPostById(id) {
 
 export async function fetchPopularCommunityPosts({ limit = 5 } = {}) {
   const safeLimit = Math.min(20, Math.max(1, Number(limit) || 5))
-  const payload = await requestJson(`/posts/popular?limit=${safeLimit}`)
-  const items = Array.isArray(payload) ? payload : Array.isArray(payload.items) ? payload.items : []
-  return items.map(normalizePost)
+
+  try {
+    const payload = await requestJson(`/posts/popular?limit=${safeLimit}`)
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload.items) ? payload.items : []
+    const popularPosts = items.map(normalizePost).slice(0, safeLimit)
+
+    if (!popularPosts.length) {
+      return fetchPopularPostsFromList(safeLimit)
+    }
+
+    return withCommentPreview(popularPosts)
+  } catch {
+    return fetchPopularPostsFromList(safeLimit)
+  }
 }
 
 export async function createCommunityPost(payload) {
