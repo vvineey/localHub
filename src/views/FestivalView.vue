@@ -486,13 +486,16 @@ onBeforeUnmount(() => {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: var(--featured-card-height);
+  --featured-card-height: clamp(560px, 45vw, 735px);
   gap: 14px;
 }
 
 .featured-card {
   position: relative;
   overflow: hidden;
-  min-height: clamp(220px, 22vw, 330px);
+  height: var(--featured-card-height);
+  min-height: 0;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -586,6 +589,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0;
   width: calc((100% - 28px) / 3);
+  height: var(--featured-card-height);
 }
 
 .featured-forward-enter-from,
@@ -894,6 +898,8 @@ onBeforeUnmount(() => {
 @media (max-width: 880px) {
   .featured-grid {
     grid-template-columns: 1fr;
+    grid-auto-rows: var(--featured-card-height);
+    --featured-card-height: 260px;
   }
 
   .featured-forward-leave-active,
@@ -902,7 +908,7 @@ onBeforeUnmount(() => {
   }
 
   .featured-card {
-    min-height: 260px;
+    height: var(--featured-card-height);
   }
 
   .calendar-week {
