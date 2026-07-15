@@ -15,7 +15,7 @@
       <div class="hero-overlay"></div>
       <div class="hero-content container">
         <span class="eyebrow"><Sparkles :size="15" /> 현지인이 고른 서울 여행 큐레이션</span>
-        <h1>현지 In</h1>
+        <h1>Local-In</h1>
         <p>유명한 코스보다 오늘 가기 좋은 동네 장소와 생생한 후기를 먼저 만나보세요.</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
@@ -328,7 +328,7 @@ function goSearch() {
 
 .hero-slides {
   overflow: hidden;
-  background: #0f172a;
+  background: #000;
 }
 
 .hero-slide {
@@ -386,7 +386,7 @@ function goSearch() {
   min-height: 64px;
   padding: 8px 8px 8px 18px;
   color: var(--muted);
-  background: #fff;
+  background: var(--surface);
   border-radius: var(--radius);
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
 }
@@ -412,7 +412,7 @@ function goSearch() {
   display: grid;
   gap: 5px;
   padding: 18px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -433,7 +433,7 @@ function goSearch() {
 
 .popular-scroll-section {
   padding: 86px 0;
-  background: #fff;
+  background: var(--surface-strong);
 }
 
 .popular-showcase {
@@ -479,7 +479,7 @@ function goSearch() {
 
 .popular-progress span.is-active {
   width: 76px;
-  background: #111827;
+  background: var(--text);
 }
 
 .popular-text {
@@ -513,7 +513,7 @@ function goSearch() {
 
 .popular-place-name {
   margin: 18px 0 0;
-  color: #60646c;
+  color: var(--text);
   font-size: clamp(1.55rem, 2.7vw, 2.65rem);
   line-height: 1.14;
   font-weight: 760;
@@ -523,7 +523,7 @@ function goSearch() {
 .popular-summary {
   max-width: 430px;
   margin: 32px 0 18px;
-  color: #4b5563;
+  color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.72;
 }
@@ -593,7 +593,7 @@ function goSearch() {
   height: 100%;
   min-height: inherit;
   overflow: hidden;
-  background: #e5e7eb;
+  background: var(--placeholder);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
@@ -625,7 +625,7 @@ function goSearch() {
   width: fit-content;
   padding: 7px 10px;
   color: var(--primary);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--floating-surface);
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 850;
@@ -638,7 +638,7 @@ function goSearch() {
 }
 
 .split-band {
-  background: #ffffff;
+  background: var(--surface-strong);
 }
 
 .split-layout {
