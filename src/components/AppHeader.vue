@@ -2,7 +2,7 @@
   <header class="site-header">
     <div class="header-inner">
       <RouterLink class="brand" to="/" :aria-label="t('nav.brandHome')">
-        <span class="brand-mark"><MapPinned :size="17" /></span>
+        <img class="brand-logo" :src="localinLogo" alt="Local-In" />
         <span>Local<span>-In</span></span>
       </RouterLink>
 
@@ -73,6 +73,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import localinLogo from '../assets/icon/localin.png'
 import {
   CalendarDays,
   Home,
@@ -154,19 +155,19 @@ function toggleTheme() {
   font-weight: 900;
 }
 
+.brand-logo {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
 .brand > span:last-child span {
   color: var(--primary);
 }
 
 .brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: var(--on-primary);
-  background: var(--primary);
-  border-radius: var(--radius);
+  display: none;
 }
 
 .desktop-nav {
