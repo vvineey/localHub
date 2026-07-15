@@ -23,7 +23,8 @@
             @click="selectedDay = day"
           >
             <span>{{ day }}</span>
-            <small v-for="festival in festivalsOn(day)" :key="festival.id">{{ festival.name }}</small>
+            <small v-for="festival in visibleFestivalsOn(day)" :key="festival.id">{{ festival.name }}</small>
+            <small v-if="hiddenFestivalsCount(day)" class="more-events">+{{ hiddenFestivalsCount(day) }}</small>
           </button>
         </div>
 
@@ -44,8 +45,11 @@
           </div>
 
           <div class="event-panel">
-            <h2>{{ t('festivals.allFestivals') }}</h2>
-            <div class="mini-list">
+            <div class="event-panel-head">
+              <h2>{{ t('festivals.allFestivals') }}</h2>
+              <span>{{ festivalRangeLabel }}</span>
+            </div>
+            <div class="mini-list" :class="{ loading: isFestivalPageLoading }">
               <article v-for="festival in festivals" :key="festival.id">
                 <span :style="{ background: festival.color }"></span>
                 <div>
@@ -53,6 +57,39 @@
                   <small>{{ festival.date }} · {{ festival.location }}</small>
                 </div>
               </article>
+            </div>
+            <div v-if="festivalPageCount > 1" class="festival-pagination">
+              <div class="pagination-controls">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  :disabled="festivalPage === 1 || isFestivalPageLoading"
+                  :title="t('common.previous')"
+                  @click="festivalPage--"
+                >
+                  <ChevronLeft :size="16" />
+                </button>
+                <button
+                  v-for="pageNumber in visibleFestivalPages"
+                  :key="pageNumber"
+                  type="button"
+                  class="page-btn"
+                  :class="{ active: festivalPage === pageNumber }"
+                  :disabled="isFestivalPageLoading"
+                  @click="festivalPage = pageNumber"
+                >
+                  {{ pageNumber }}
+                </button>
+                <button
+                  class="icon-btn"
+                  type="button"
+                  :disabled="festivalPage === festivalPageCount || isFestivalPageLoading"
+                  :title="t('common.next')"
+                  @click="festivalPage++"
+                >
+                  <ChevronRight :size="16" />
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -62,22 +99,89 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import { festivals as fallbackFestivals } from '../data/localhub'
-import { fetchFestivals } from '../services/localHubApi'
+import { fetchFestivals, fetchFestivalsPage } from '../services/localHubApi'
 
 const { t, tm } = useI18n()
+const FESTIVAL_PAGE_SIZE = 5
+const MAX_DAY_EVENT_LABELS = 2
 const weekdays = computed(() => tm('festivals.weekdays'))
 const selectedDay = ref(20)
-const festivals = ref([...fallbackFestivals])
+const calendarFestivals = ref([...fallbackFestivals])
+const festivals = ref(fallbackFestivals.slice(0, FESTIVAL_PAGE_SIZE))
+const totalFestivals = ref(fallbackFestivals.length)
+const festivalPage = ref(1)
+const isFestivalPageLoading = ref(false)
 const leadingBlanks = Array.from({ length: new Date(2026, 6, 1).getDay() }, (_, index) => index)
+let festivalPageRequestId = 0
 
-const festivalsOn = (day) => festivals.value.filter((festival) => festival.days.includes(day))
+const festivalsOn = (day) => calendarFestivals.value.filter((festival) => festival.days.includes(day))
+const visibleFestivalsOn = (day) => festivalsOn(day).slice(0, MAX_DAY_EVENT_LABELS)
+const hiddenFestivalsCount = (day) => Math.max(0, festivalsOn(day).length - MAX_DAY_EVENT_LABELS)
 const selectedEvents = computed(() => festivalsOn(selectedDay.value))
+const festivalPageCount = computed(() => Math.max(1, Math.ceil(totalFestivals.value / FESTIVAL_PAGE_SIZE)))
+
+const visibleFestivalPages = computed(() => {
+  const maxVisible = 5
+  const start = Math.max(1, Math.min(festivalPage.value - 2, festivalPageCount.value - maxVisible + 1))
+  const end = Math.min(festivalPageCount.value, start + maxVisible - 1)
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+})
+
+const festivalRangeLabel = computed(() => {
+  if (!totalFestivals.value) return t('common.zeroShown')
+
+  const start = (festivalPage.value - 1) * FESTIVAL_PAGE_SIZE + 1
+  const end = Math.min(festivalPage.value * FESTIVAL_PAGE_SIZE, totalFestivals.value)
+
+  return t('common.rangeShown', {
+    start: start.toLocaleString(),
+    end: end.toLocaleString(),
+  })
+})
+
+async function loadCalendarFestivals() {
+  calendarFestivals.value = await fetchFestivals()
+}
+
+async function loadFestivalPage() {
+  const requestId = ++festivalPageRequestId
+  isFestivalPageLoading.value = true
+
+  try {
+    const response = await fetchFestivalsPage({
+      page: festivalPage.value,
+      pageSize: FESTIVAL_PAGE_SIZE,
+    })
+
+    if (requestId !== festivalPageRequestId) return
+
+    totalFestivals.value = response.pagination.total
+    const nextPageCount = Math.max(1, Math.ceil(response.pagination.total / FESTIVAL_PAGE_SIZE))
+
+    if (festivalPage.value > nextPageCount) {
+      festivalPage.value = nextPageCount
+      return
+    }
+
+    festivals.value = response.items
+  } finally {
+    if (requestId === festivalPageRequestId) {
+      isFestivalPageLoading.value = false
+    }
+  }
+}
+
+watch(festivalPage, () => {
+  loadFestivalPage()
+})
 
 onMounted(async () => {
-  festivals.value = await fetchFestivals()
+  loadCalendarFestivals()
+  loadFestivalPage()
 })
 </script>
 
@@ -90,6 +194,7 @@ onMounted(async () => {
 
 .calendar {
   display: grid;
+  align-self: start;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
@@ -160,6 +265,11 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+.day-cell .more-events {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
 .event-side {
   display: grid;
   align-content: start;
@@ -176,6 +286,26 @@ onMounted(async () => {
 .event-panel h2 {
   margin: 0 0 14px;
   font-size: 1.1rem;
+}
+
+.event-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.event-panel-head h2 {
+  margin: 0;
+}
+
+.event-panel-head span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .event-stack {
@@ -220,6 +350,10 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.mini-list.loading {
+  opacity: 0.55;
+}
+
 .mini-list article {
   display: flex;
   gap: 10px;
@@ -239,6 +373,40 @@ onMounted(async () => {
 .mini-list small {
   margin-top: 4px;
   color: var(--muted);
+}
+
+.festival-pagination {
+  display: grid;
+  justify-items: center;
+  margin-top: 16px;
+}
+
+.pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.page-btn {
+  width: 36px;
+  height: 36px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-weight: 800;
+}
+
+.page-btn.active {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.page-btn:disabled,
+.festival-pagination .icon-btn:disabled {
+  opacity: 0.45;
 }
 
 @media (max-width: 980px) {
