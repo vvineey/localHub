@@ -2,8 +2,8 @@
   <section class="section">
     <div class="container">
       <div class="page-title">
-        <h1>서울 관광지·맛집 지도</h1>
-        <p>백엔드 서울 데이터의 좌표를 Kakao Maps 핀으로 표시하고 Kakao Local 행정동 정보를 연결합니다.</p>
+        <h1>서울 현지 추천 지도</h1>
+        <p>동네별 추천 장소와 맛집, 축제를 지도에서 한 번에 확인합니다.</p>
       </div>
 
       <div class="map-layout">
@@ -31,7 +31,7 @@
             <span v-if="selected" class="badge">{{ labelFor(selected.type) }}</span>
             <h2>{{ selected ? selected.name : '선택한 핀 정보' }}</h2>
             <p v-if="!selected">
-              지도 위 핀을 선택하면 장소 정보와 Kakao Local 행정동 조회 결과가 표시됩니다.
+              지도 위 핀을 선택하면 장소 정보와 동네 위치를 확인할 수 있습니다.
             </p>
             <template v-else>
               <p>{{ selected.summary || '서울 장소 좌표 데이터입니다.' }}</p>
@@ -184,9 +184,9 @@ onMounted(async () => {
 .count-pill {
   flex: 0 0 auto;
   padding: 8px 12px;
-  color: #475569;
-  background: #eef2ff;
-  border: 1px solid #dbeafe;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 0.84rem;
   font-weight: 800;
@@ -229,7 +229,7 @@ onMounted(async () => {
 }
 
 .pin-meta dt {
-  color: #64748b;
+  color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
 }
