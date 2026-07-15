@@ -97,12 +97,12 @@ watch(
   padding: 11px 13px;
   border-radius: var(--radius);
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
 }
 
 .message.user .bubble {
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-color: var(--primary);
 }
@@ -122,7 +122,7 @@ watch(
 }
 
 .message.user time {
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--on-primary) 72%, transparent);
 }
 
 .typing {
@@ -172,7 +172,7 @@ watch(
 }
 
 .send {
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-color: var(--primary);
 }
