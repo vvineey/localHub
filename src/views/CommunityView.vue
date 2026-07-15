@@ -223,8 +223,8 @@ onBeforeUnmount(() => {
   width: 100vw;
   min-height: calc(100vh - 64px + var(--pick-scroll-distance));
   margin: 8px 0 30px calc(50% - 50vw);
-  color: #fff;
-  background: #000;
+  color: var(--text);
+  background: var(--surface-strong);
 }
 
 .local-pick-sticky {
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
 
 .local-pick-header span {
   display: block;
-  color: #bdbdbd;
+  color: var(--muted);
   font-size: 0.92rem;
   font-weight: 850;
 }
@@ -272,14 +272,14 @@ onBeforeUnmount(() => {
   flex: 0 0 clamp(280px, 27vw, 430px);
   flex-direction: column;
   gap: 13px;
-  color: #fff;
+  color: var(--text);
 }
 
 .local-pick-card img {
   width: 100%;
   aspect-ratio: 1 / 0.92;
   object-fit: cover;
-  background: #111;
+  background: var(--placeholder);
   border-radius: var(--radius);
   pointer-events: none;
 }
@@ -300,9 +300,9 @@ onBeforeUnmount(() => {
   align-items: center;
   min-height: 23px;
   padding: 0 8px;
-  color: #f5f5f5;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 850;
@@ -310,7 +310,7 @@ onBeforeUnmount(() => {
 
 .local-pick-card h3 {
   margin: 0;
-  color: #fff;
+  color: var(--text);
   font-size: clamp(1.05rem, 1.6vw, 1.34rem);
   line-height: 1.34;
 }
@@ -319,11 +319,42 @@ onBeforeUnmount(() => {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: rgba(255, 255, 255, 0.64);
+  color: var(--muted);
   font-size: 0.84rem;
   line-height: 1.55;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+:global([data-theme='dark']) .local-pick-section {
+  color: #fff;
+  background: #000;
+}
+
+:global([data-theme='dark']) .local-pick-header span {
+  color: #bdbdbd;
+}
+
+:global([data-theme='dark']) .local-pick-card {
+  color: #fff;
+}
+
+:global([data-theme='dark']) .local-pick-card img {
+  background: #111;
+}
+
+:global([data-theme='dark']) .local-pick-card-body span {
+  color: #f5f5f5;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+:global([data-theme='dark']) .local-pick-card h3 {
+  color: #fff;
+}
+
+:global([data-theme='dark']) .local-pick-card p {
+  color: rgba(255, 255, 255, 0.64);
 }
 
 .board-search {
