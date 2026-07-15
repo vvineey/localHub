@@ -8,6 +8,16 @@ import { getPosts } from '../stores/community'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const PAGE_SIZE = 100
+export const placeCategoryFilters = [
+  { label: '전체', contentTypeId: null },
+  { label: '관광지', contentTypeId: 12 },
+  { label: '레포츠', contentTypeId: 28 },
+  { label: '문화시설', contentTypeId: 14 },
+  { label: '쇼핑', contentTypeId: 38 },
+  { label: '숙박', contentTypeId: 32 },
+  { label: '여행코스', contentTypeId: 25 },
+  { label: '축제공연행사', contentTypeId: 15 },
+]
 const SEOUL_BOUNDS = {
   minLng: 126.75,
   maxLng: 127.2,
@@ -135,8 +145,31 @@ function matchesPlace(place, keyword, category) {
       .join(' ')
       .toLowerCase()
       .includes(normalized)
-  const matchesCategory = category === '전체' || place.category === category
+  const matchesCategory =
+    category === '전체' ||
+    place.category === category ||
+    (category === '관광지' && place.type === 'attraction') ||
+    (category === '레포츠' && place.type === 'nature') ||
+    (category === '숙박' && place.type === 'accommodation') ||
+    (category === '쇼핑' && place.type === 'shopping') ||
+    (category === '축제공연행사' && place.type === 'festival')
   return matchesKeyword && matchesCategory
+}
+
+function contentTypeIdFor(category) {
+  return placeCategoryFilters.find((item) => item.label === category)?.contentTypeId ?? null
+}
+
+function normalizePagination(pagination, fallbackPage, fallbackSize, fallbackTotal) {
+  const page = Number(pagination?.page)
+  const size = Number(pagination?.size)
+  const total = Number(pagination?.total)
+
+  return {
+    page: Number.isFinite(page) && page > 0 ? page : fallbackPage,
+    size: Number.isFinite(size) && size > 0 ? size : fallbackSize,
+    total: Number.isFinite(total) && total >= 0 ? total : fallbackTotal,
+  }
 }
 
 async function loadApiPlaces() {
@@ -171,6 +204,55 @@ async function loadApiPlaces() {
 export async function fetchPlaces({ keyword = '', category = '전체' } = {}) {
   const places = await loadApiPlaces()
   return places.filter((place) => matchesPlace(place, keyword, category))
+}
+
+export async function fetchPlacesPage({
+  keyword = '',
+  category = '전체',
+  page = 1,
+  pageSize = 9,
+} = {}) {
+  const safePage = Math.max(1, Number(page) || 1)
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 9))
+  const skip = (safePage - 1) * safePageSize
+  const contentTypeId = contentTypeIdFor(category)
+
+  try {
+    const params = new URLSearchParams({
+      skip: String(skip),
+      limit: String(safePageSize),
+    })
+    const trimmedKeyword = keyword.trim()
+
+    if (trimmedKeyword) {
+      params.set('keyword', trimmedKeyword)
+    }
+
+    if (contentTypeId) {
+      params.set('content_type_id', String(contentTypeId))
+    }
+
+    const payload = await requestJson(`/places?${params.toString()}`)
+    const items = Array.isArray(payload.items) ? payload.items.map(mapApiPlace) : []
+
+    return {
+      items,
+      pagination: normalizePagination(payload.pagination, safePage, safePageSize, items.length),
+    }
+  } catch {
+    const places = await loadApiPlaces()
+    const filteredPlaces = places.filter((place) => matchesPlace(place, keyword, category))
+    const pageItems = filteredPlaces.slice(skip, skip + safePageSize)
+
+    return {
+      items: pageItems,
+      pagination: {
+        page: safePage,
+        size: safePageSize,
+        total: filteredPlaces.length,
+      },
+    }
+  }
 }
 
 export async function fetchPlaceById(id) {
