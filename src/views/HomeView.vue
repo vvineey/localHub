@@ -150,38 +150,62 @@
 
     <section class="section">
       <div class="container home-bottom">
-        <div>
+        <div
+          class="home-festival-section"
+          @mouseenter="isHomeFestivalHovered = true"
+          @mouseleave="isHomeFestivalHovered = false"
+        >
           <div class="section-title compact">
             <div>
-              <h2>{{ t('home.monthlyFestival') }}</h2>
+              <h2>{{ t('festivals.title') }}</h2>
               <p>{{ t('home.monthlyFestivalCopy') }}</p>
             </div>
-            <RouterLink class="btn btn-ghost" to="/festivals">{{ t('home.calendar') }}</RouterLink>
-          </div>
-          <div class="festival-list">
-            <RouterLink
-              v-for="festival in homeFestivals.slice(0, 3)"
-              :key="festival.id"
-              class="festival-row card"
-              to="/festivals"
-            >
-              <img :src="festival.image" :alt="festival.name" />
-              <div>
-                <strong>{{ festival.name }}</strong>
-                <span>{{ festival.date }} · {{ festival.location }}</span>
+            <div class="home-festival-actions">
+              <RouterLink class="btn btn-ghost" to="/festivals">{{ t('home.calendar') }}</RouterLink>
+              <div class="home-festival-controls" role="group" :aria-label="t('festivals.carouselControls')">
+                <button
+                  type="button"
+                  class="home-festival-control"
+                  :title="t('festivals.carouselPrevious')"
+                  @click="moveHomeFestivals(-1)"
+                >
+                  <ChevronLeft :size="22" />
+                </button>
+                <button
+                  type="button"
+                  class="home-festival-control"
+                  :title="isHomeFestivalPaused ? t('festivals.carouselPlay') : t('festivals.carouselPause')"
+                  @click="toggleHomeFestivalRotation"
+                >
+                  <Play v-if="isHomeFestivalPaused" :size="18" />
+                  <Pause v-else :size="18" />
+                </button>
+                <button
+                  type="button"
+                  class="home-festival-control"
+                  :title="t('festivals.carouselNext')"
+                  @click="moveHomeFestivals(1)"
+                >
+                  <ChevronRight :size="22" />
+                </button>
               </div>
-            </RouterLink>
-          </div>
-        </div>
-
-        <div>
-          <div class="section-title compact">
-            <div>
-              <h2>{{ t('home.localMetrics') }}</h2>
-              <p>{{ t('home.localMetricsCopy') }}</p>
             </div>
           </div>
-          <StatBars :items="barItems" />
+          <TransitionGroup :name="homeFestivalTransitionName" tag="div" class="home-festival-grid">
+            <RouterLink
+              v-for="festival in homeFestivalCards"
+              :key="festival.id"
+              class="home-festival-card"
+              :to="`/places/${festival.id}`"
+            >
+              <img :src="festival.image" :alt="festival.name" />
+              <div class="home-festival-overlay">
+                <span>{{ festivalDateLabel(festival) }}</span>
+                <strong>{{ festival.name }}</strong>
+                <p>{{ festivalPlaceLabel(festival) }}</p>
+              </div>
+            </RouterLink>
+          </TransitionGroup>
         </div>
       </div>
     </section>
@@ -192,13 +216,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowRight, ArrowUpRight, CalendarDays, Map, MapPin, MessageCircle, MessageSquare, Search, Sparkles, Star, Users } from '@lucide/vue'
+import { ArrowRight, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Map, MapPin, MessageCircle, MessageSquare, Pause, Play, Search, Sparkles, Star, Users } from '@lucide/vue'
 import PageLoading from '../components/PageLoading.vue'
-import StatBars from '../components/StatBars.vue'
 import { fetchDashboardData, fetchCommunityPosts, fetchFestivals, fetchPlaces, fetchPopularCommunityPosts } from '../services/localHubApi'
 
 const HERO_SLIDE_INTERVAL_MS = 2000
 const COMMENT_ROTATE_INTERVAL_MS = 2800
+const HOME_FESTIVAL_CARD_COUNT = 5
+const HOME_FESTIVAL_ROTATE_INTERVAL_MS = 4200
 
 const { t, te } = useI18n()
 const router = useRouter()
@@ -217,6 +242,10 @@ const dashboardStats = ref({
 })
 const activeShowcaseIndex = ref(0)
 const activeCommentIndex = ref(0)
+const homeFestivalOffset = ref(0)
+const homeFestivalSlideDirection = ref(1)
+const isHomeFestivalPaused = ref(false)
+const isHomeFestivalHovered = ref(false)
 const showcaseCardRefs = ref([])
 const homePlaces = ref([])
 const homeFestivals = ref([])
@@ -226,6 +255,7 @@ const popularPostsLoading = ref(true)
 const popularPostsError = ref(false)
 let heroSlideTimerId = null
 let commentRotateTimerId = null
+let homeFestivalRotateTimerId = null
 let showcaseObserver = null
 
 const heroImages = [
@@ -258,29 +288,19 @@ const stats = computed(() => [
   { label: t('home.statsAi'), value: 5, icon: MessageCircle },
 ])
 
-const barItems = computed(() => [
-  {
-    label: t('home.barPlaces'),
-    value: dashboardStats.value.type_counts.attraction,
-    percent: 84,
-    color: '#2563eb',
-  },
-  {
-    label: t('home.barNature'),
-    value: dashboardStats.value.type_counts.nature,
-    percent: 48,
-    color: '#10b981',
-  },
-  {
-    label: t('home.barAccommodation'),
-    value: dashboardStats.value.type_counts.accommodation,
-    percent: 32,
-    color: '#06b6d4',
-  },
-  { label: t('home.barReviews'), value: communityPostsCount.value.toLocaleString(), percent: 68, color: '#f59e0b' },
-])
-
 const showcasePlaces = computed(() => homePlaces.value.slice(0, 3))
+const homeFestivalSource = computed(() => homeFestivals.value.filter((festival) => festival.image))
+const homeFestivalCards = computed(() => {
+  const source = homeFestivalSource.value
+  if (!source.length) return []
+
+  return Array.from({ length: Math.min(HOME_FESTIVAL_CARD_COUNT, source.length) }, (_, index) => {
+    return source[(homeFestivalOffset.value + index) % source.length]
+  })
+})
+const homeFestivalTransitionName = computed(() =>
+  homeFestivalSlideDirection.value >= 0 ? 'home-festival-forward' : 'home-festival-backward',
+)
 const activeShowcasePlace = computed(
   () => showcasePlaces.value[activeShowcaseIndex.value] ?? showcasePlaces.value[0] ?? {},
 )
@@ -297,6 +317,8 @@ function categoryLabel(category) {
 function setShowcaseCardRef(element, index) {
   if (element) {
     showcaseCardRefs.value[index] = element
+  } else {
+    showcaseCardRefs.value[index] = null
   }
 }
 
@@ -317,39 +339,97 @@ function commentKey(post) {
   return comment ? `${post.id}-${comment.id}` : `${post.id}-no-comment`
 }
 
-function observeShowcaseCards() {
-  if ('IntersectionObserver' in window) {
-    if (showcaseObserver) {
-      showcaseObserver.disconnect()
-    }
+function festivalDateLabel(festival) {
+  return festival.date || festival.eventStartDate || '일정 준비 중'
+}
 
-    showcaseObserver = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+function festivalPlaceLabel(festival) {
+  return festival.location || festival.eventPlace || festival.address || festival.district || '장소 준비 중'
+}
 
-        if (visibleEntry) {
-          activeShowcaseIndex.value = Number(visibleEntry.target.dataset.index)
-        }
-      },
-      {
-        rootMargin: '-28% 0px -38% 0px',
-        threshold: [0.2, 0.4, 0.6, 0.8],
-      },
-    )
+async function completeHomeFestivals(festivals) {
+  const needsFestivalList = festivals.length < 5 || festivals.some((festival) => !festival.date || !festival.location)
 
-    showcaseCardRefs.value.forEach((element) => {
-      showcaseObserver.observe(element)
-    })
+  if (!needsFestivalList) {
+    return festivals
   }
+
+  try {
+    const fetchedFestivals = await fetchFestivals()
+    return fetchedFestivals.length ? fetchedFestivals : festivals
+  } catch {
+    return festivals
+  }
+}
+
+function shiftHomeFestivals(step) {
+  const sourceLength = homeFestivalSource.value.length
+  if (sourceLength <= 1) return
+
+  homeFestivalSlideDirection.value = step >= 0 ? 1 : -1
+  homeFestivalOffset.value = (homeFestivalOffset.value + step + sourceLength) % sourceLength
+}
+
+function moveHomeFestivals(step) {
+  shiftHomeFestivals(step)
+}
+
+function toggleHomeFestivalRotation() {
+  isHomeFestivalPaused.value = !isHomeFestivalPaused.value
+}
+
+function startHomeFestivalRotation() {
+  if (homeFestivalRotateTimerId) {
+    window.clearInterval(homeFestivalRotateTimerId)
+  }
+
+  homeFestivalRotateTimerId = window.setInterval(() => {
+    if (
+      homeFestivalSource.value.length > 1 &&
+      !isHomeFestivalPaused.value &&
+      !isHomeFestivalHovered.value
+    ) {
+      shiftHomeFestivals(1)
+    }
+  }, HOME_FESTIVAL_ROTATE_INTERVAL_MS)
+}
+
+function observeShowcaseCards() {
+  if (!('IntersectionObserver' in window)) return
+
+  if (showcaseObserver) {
+    showcaseObserver.disconnect()
+  }
+
+  const showcaseElements = showcaseCardRefs.value.filter(Boolean)
+  if (!showcaseElements.length) return
+
+  showcaseObserver = new IntersectionObserver(
+    (entries) => {
+      const visibleEntry = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+
+      if (visibleEntry) {
+        activeShowcaseIndex.value = Number(visibleEntry.target.dataset.index)
+      }
+    },
+    {
+      rootMargin: '-28% 0px -38% 0px',
+      threshold: [0.2, 0.4, 0.6, 0.8],
+    },
+  )
+
+  showcaseElements.forEach((element) => {
+    showcaseObserver.observe(element)
+  })
 }
 
 async function loadHomeData() {
   try {
     const { places, festivals, stats } = await fetchDashboardData()
     homePlaces.value = places
-    homeFestivals.value = festivals
+    homeFestivals.value = await completeHomeFestivals(festivals)
     dashboardStats.value = stats
     communityPostsCount.value = stats.community_posts_count
   } catch {
@@ -374,8 +454,8 @@ async function loadHomeData() {
   }
 
   activeShowcaseIndex.value = 0
-  await nextTick()
-  observeShowcaseCards()
+  homeFestivalOffset.value = 0
+  showcaseCardRefs.value = []
 }
 
 async function loadPopularPosts() {
@@ -397,6 +477,8 @@ async function loadInitialHome() {
   isHomeLoading.value = true
   await Promise.all([loadHomeData(), loadPopularPosts()])
   isHomeLoading.value = false
+  await nextTick()
+  observeShowcaseCards()
 }
 
 onMounted(() => {
@@ -410,6 +492,7 @@ onMounted(() => {
     activeCommentIndex.value += 1
   }, COMMENT_ROTATE_INTERVAL_MS)
 
+  startHomeFestivalRotation()
   loadInitialHome()
 })
 
@@ -420,6 +503,10 @@ onBeforeUnmount(() => {
 
   if (commentRotateTimerId) {
     window.clearInterval(commentRotateTimerId)
+  }
+
+  if (homeFestivalRotateTimerId) {
+    window.clearInterval(homeFestivalRotateTimerId)
   }
 
   if (showcaseObserver) {
@@ -989,44 +1076,172 @@ function goSearch() {
 
 .home-bottom {
   display: grid;
-  grid-template-columns: 1fr 0.85fr;
-  gap: 24px;
+  gap: 18px;
 }
 
 .compact {
   margin-bottom: 14px;
 }
 
-.festival-list {
+.home-festival-section {
   display: grid;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.home-festival-actions,
+.home-festival-controls,
+.home-festival-control {
+  display: inline-flex;
+  align-items: center;
+}
+
+.home-festival-actions {
+  justify-content: end;
   gap: 10px;
 }
 
-.festival-row {
-  display: grid;
-  align-items: center;
-  grid-template-columns: 112px 1fr;
-  gap: 14px;
-  overflow: hidden;
-  padding: 10px;
+.home-festival-controls {
+  gap: 4px;
 }
 
-.festival-row img {
-  width: 112px;
-  height: 74px;
-  object-fit: cover;
+.home-festival-control {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--text);
+  background: transparent;
+  border-radius: 999px;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.home-festival-control:hover {
+  background: var(--surface-soft);
+  transform: translateY(-1px);
+}
+
+.home-festival-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--home-festival-columns), minmax(0, 1fr));
+  grid-auto-rows: var(--home-festival-card-height);
+  --home-festival-columns: 5;
+  --home-festival-card-height: 360px;
+  --home-festival-leave-width: calc((100% - 56px) / 5);
+  gap: var(--home-festival-gap);
+  --home-festival-gap: 14px;
+}
+
+.home-festival-card {
+  position: relative;
+  overflow: hidden;
+  height: var(--home-festival-card-height);
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
 }
 
-.festival-row strong,
-.festival-row span {
-  display: block;
+.home-festival-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition:
+    filter 260ms ease,
+    opacity 260ms ease,
+    transform 320ms ease;
 }
 
-.festival-row span {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 0.86rem;
+.home-festival-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  gap: 8px;
+  padding: 18px;
+  color: #fff;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, rgba(13, 17, 23, 0.04), rgba(13, 17, 23, 0.82)),
+    rgba(13, 17, 23, 0.3);
+  transform: translateY(10px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+.home-festival-card:hover img,
+.home-festival-card:focus-visible img {
+  opacity: 0.5;
+  filter: saturate(0.9);
+  transform: scale(1.035);
+}
+
+.home-festival-card:hover .home-festival-overlay,
+.home-festival-card:focus-visible .home-festival-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.home-festival-overlay span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.home-festival-overlay strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #fff;
+  font-size: clamp(1.04rem, 1.25vw, 1.34rem);
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.home-festival-overlay p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.home-festival-forward-move,
+.home-festival-forward-enter-active,
+.home-festival-forward-leave-active,
+.home-festival-backward-move,
+.home-festival-backward-enter-active,
+.home-festival-backward-leave-active {
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
+}
+
+.home-festival-forward-leave-active,
+.home-festival-backward-leave-active {
+  position: absolute;
+  top: 0;
+  width: var(--home-festival-leave-width);
+  height: var(--home-festival-card-height);
+}
+
+.home-festival-forward-enter-from,
+.home-festival-backward-leave-to {
+  opacity: 0;
+  transform: translateX(42px);
+}
+
+.home-festival-forward-leave-to,
+.home-festival-backward-enter-from {
+  opacity: 0;
+  transform: translateX(-42px);
 }
 
 @media (max-width: 900px) {
@@ -1065,6 +1280,12 @@ function goSearch() {
 
   .popular-visual-card {
     min-height: 430px;
+  }
+
+  .home-festival-grid {
+    --home-festival-columns: 2;
+    --home-festival-card-height: 320px;
+    --home-festival-leave-width: calc((100% - 14px) / 2);
   }
 }
 
@@ -1137,12 +1358,15 @@ function goSearch() {
     white-space: normal;
   }
 
-  .festival-row {
-    grid-template-columns: 92px 1fr;
+  .home-festival-grid {
+    --home-festival-columns: 1;
+    --home-festival-card-height: 380px;
+    --home-festival-leave-width: 100%;
   }
 
-  .festival-row img {
-    width: 92px;
+  .home-festival-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
