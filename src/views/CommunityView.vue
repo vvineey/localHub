@@ -130,6 +130,7 @@ import {
   MessageSquare,
   Search,
 } from '@lucide/vue'
+import { places as fallbackLocalPickPlaces } from '../data/localhub'
 import { fetchPlacesPage, fetchCommunityPosts } from '../services/localHubApi'
 
 const { locale, t, te } = useI18n()
@@ -172,12 +173,22 @@ const pagedPosts = computed(() =>
   filteredPosts.value.slice((page.value - 1) * pageSize, page.value * pageSize),
 )
 
-function toggleLike(postId) {
+async function toggleLike(postId) {
   const index = posts.value.findIndex((post) => post.id === Number(postId))
   if (index === -1) return
+
   const post = posts.value[index]
-  post.liked = !post.liked
-  post.likes = (post.likes || 0) + (post.liked ? 1 : -1)
+  const liked = !post.liked
+  const newLikes = (post.likes || 0) + (liked ? 1 : -1)
+  post.liked = liked
+  post.likes = newLikes
+
+  try {
+    await updateCommunityPost(postId, { likes: newLikes })
+  } catch {
+    post.liked = !liked
+    post.likes = (post.likes || 0) + (liked ? -1 : 1)
+  }
 }
 
 async function loadPosts() {

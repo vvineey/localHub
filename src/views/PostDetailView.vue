@@ -98,6 +98,24 @@ const props = defineProps({
   },
 })
 
+const randomNicknames = [
+  '여행자A',
+  '서울러버',
+  '맛집탐험가',
+  '사진찍는여행자',
+  '도시산책러',
+  '한강러닝',
+  '미식가',
+  '문화탐험가',
+  '낭만여행자',
+  '소확행러',
+]
+
+function generateRandomNickname() {
+  const index = Math.floor(Math.random() * randomNicknames.length)
+  return randomNicknames[index]
+}
+
 const router = useRouter()
 const { t, te } = useI18n()
 const modalOpen = ref(false)
@@ -105,7 +123,7 @@ const pendingAction = ref(null)
 const passwordError = ref(false)
 const post = ref(null)
 const comments = ref([])
-const newComment = ref({ author_name: '', content: '', password: '' })
+const newComment = ref({ author_name: generateRandomNickname(), content: '', password: '' })
 
 async function loadPost() {
   try {
@@ -144,14 +162,16 @@ async function loadComments() {
 async function submitComment() {
   if (!newComment.value.content.trim() || !newComment.value.password.trim()) return
 
+  const authorName = newComment.value.author_name.trim() || generateRandomNickname()
+
   try {
     await createComment(props.id, {
       content: newComment.value.content.trim(),
-      author_name: newComment.value.author_name.trim() || '익명',
+      author_name: authorName,
       password: newComment.value.password,
     })
     newComment.value.content = ''
-    newComment.value.author_name = ''
+    newComment.value.author_name = generateRandomNickname()
     newComment.value.password = ''
     await loadComments()
     if (post.value) {
@@ -176,10 +196,20 @@ function closeModal() {
   passwordError.value = false
 }
 
-function toggleLike() {
+async function toggleLike() {
   if (!post.value) return
-  post.value.liked = !post.value.liked
-  post.value.likes = (post.value.likes || 0) + (post.value.liked ? 1 : -1)
+
+  const liked = !post.value.liked
+  const newLikes = (post.value.likes || 0) + (liked ? 1 : -1)
+  post.value.liked = liked
+  post.value.likes = newLikes
+
+  try {
+    await updateCommunityPost(props.id, { likes: newLikes })
+  } catch {
+    post.value.liked = !liked
+    post.value.likes = (post.value.likes || 0) + (liked ? -1 : 1)
+  }
 }
 
 async function confirmPassword(password) {
