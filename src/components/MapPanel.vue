@@ -1,151 +1,283 @@
 <template>
   <div class="map-panel">
-    <div class="map-canvas" role="img" aria-label="서울 주요 관광지와 축제 위치 지도">
-      <div class="river river-a"></div>
-      <div class="river river-b"></div>
-      <div class="map-label north">북한산</div>
-      <div class="map-label river-label">한강</div>
-      <button
-        v-for="pin in pins"
-        :key="pin.id"
-        class="map-pin"
-        type="button"
-        :style="{ left: `${pin.x}%`, top: `${pin.y}%`, '--pin-color': pin.color }"
-        :aria-label="pin.name"
-        :title="pin.name"
-        @click="$emit('select', pin)"
-      >
-        <MapPin :size="18" fill="currentColor" />
-      </button>
+    <div ref="mapElement" class="kakao-map" aria-label="서울 관광지와 맛집 카카오 지도"></div>
+    <div v-if="statusMessage" class="map-status">
+      <strong>{{ statusTitle }}</strong>
+      <span>{{ statusMessage }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { MapPin } from '@lucide/vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { hasKakaoMapAppKey, loadKakaoMapsSdk } from '../services/kakaoMapSdk'
 
-defineProps({
+const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 }
+const TYPE_STYLES = {
+  attraction: { color: '#2563eb', label: '관광지' },
+  restaurant: { color: '#ef4444', label: '맛집' },
+  nature: { color: '#10b981', label: '자연' },
+  accommodation: { color: '#06b6d4', label: '숙박' },
+  festival: { color: '#f59e0b', label: '축제' },
+  shopping: { color: '#8b5cf6', label: '쇼핑' },
+}
+
+const props = defineProps({
   pins: {
     type: Array,
     required: true,
   },
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select'])
+const mapElement = ref(null)
+const map = shallowRef(null)
+const kakaoMaps = shallowRef(null)
+const overlays = shallowRef([])
+const activeOverlay = shallowRef(null)
+const statusTitle = ref('Kakao Maps 연결 대기')
+const statusMessage = ref(hasKakaoMapAppKey() ? '지도를 불러오는 중입니다.' : 'VITE_KAKAO_MAP_APP_KEY를 설정하면 지도가 표시됩니다.')
+
+const coordinatePins = computed(() =>
+  props.pins
+    .map((pin) => ({
+      ...pin,
+      lat: Number(pin.lat ?? pin.latitude),
+      lng: Number(pin.lng ?? pin.longitude),
+    }))
+    .filter((pin) => Number.isFinite(pin.lat) && Number.isFinite(pin.lng)),
+)
+
+function styleFor(type) {
+  return TYPE_STYLES[type] || TYPE_STYLES.attraction
+}
+
+function clearOverlays() {
+  overlays.value.forEach((overlay) => overlay.setMap(null))
+  overlays.value = []
+  activeOverlay.value = null
+}
+
+function createPinElement(pin) {
+  const style = styleFor(pin.type)
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'kakao-pin'
+  button.setAttribute('aria-label', pin.name)
+  button.style.setProperty('--pin-color', pin.color || style.color)
+
+  const dot = document.createElement('span')
+  dot.className = 'kakao-pin-dot'
+
+  const label = document.createElement('span')
+  label.className = 'kakao-pin-label'
+  label.textContent = pin.name
+
+  const type = document.createElement('span')
+  type.className = 'kakao-pin-type'
+  type.textContent = style.label
+
+  label.appendChild(type)
+  button.append(dot, label)
+
+  return button
+}
+
+function activateOverlay(overlay) {
+  activeOverlay.value?.getContent()?.classList.remove('active')
+  activeOverlay.value = overlay
+  activeOverlay.value?.getContent()?.classList.add('active')
+}
+
+function fitMapToPins() {
+  if (!kakaoMaps.value || !map.value || !coordinatePins.value.length) return
+
+  const bounds = new kakaoMaps.value.LatLngBounds()
+  coordinatePins.value.forEach((pin) => {
+    bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
+  })
+  map.value.setBounds(bounds, 48, 48, 48, 48)
+}
+
+function renderOverlays() {
+  if (!kakaoMaps.value || !map.value) return
+
+  clearOverlays()
+
+  coordinatePins.value.forEach((pin, index) => {
+    const position = new kakaoMaps.value.LatLng(pin.lat, pin.lng)
+    const content = createPinElement(pin)
+    const overlay = new kakaoMaps.value.CustomOverlay({
+      content,
+      position,
+      xAnchor: 0.5,
+      yAnchor: 1.05,
+      zIndex: 10 + index,
+    })
+
+    content.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      activateOverlay(overlay)
+      map.value.panTo(position)
+      emit('select', pin)
+    })
+
+    overlay.setMap(map.value)
+    overlays.value = [...overlays.value, overlay]
+  })
+
+  fitMapToPins()
+}
+
+function initializeMap(kakao) {
+  if (map.value || !mapElement.value) return
+
+  kakaoMaps.value = kakao.maps
+  map.value = new kakaoMaps.value.Map(mapElement.value, {
+    center: new kakaoMaps.value.LatLng(SEOUL_CENTER.lat, SEOUL_CENTER.lng),
+    level: 8,
+  })
+
+  map.value.addControl(new kakaoMaps.value.ZoomControl(), kakaoMaps.value.ControlPosition.RIGHT)
+  map.value.addControl(new kakaoMaps.value.MapTypeControl(), kakaoMaps.value.ControlPosition.TOPRIGHT)
+  statusMessage.value = ''
+  renderOverlays()
+}
+
+onMounted(async () => {
+  await nextTick()
+
+  try {
+    const kakao = await loadKakaoMapsSdk()
+    initializeMap(kakao)
+  } catch {
+    statusTitle.value = 'Kakao Maps 키 설정 필요'
+    statusMessage.value = '카카오 개발자 콘솔의 JavaScript 키를 VITE_KAKAO_MAP_APP_KEY에 넣어주세요.'
+  }
+})
+
+watch(coordinatePins, renderOverlays, { flush: 'post' })
+
+onBeforeUnmount(() => {
+  clearOverlays()
+  map.value = null
+  kakaoMaps.value = null
+})
 </script>
 
 <style scoped>
 .map-panel {
+  position: relative;
   overflow: hidden;
-  min-height: 460px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  background: #e8edf4;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.kakao-map {
+  width: 100%;
+  height: min(64vh, 620px);
+  min-height: 500px;
+}
+
+.map-status {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 28px;
+  text-align: center;
   background:
-    linear-gradient(135deg, rgba(16, 185, 129, 0.12), transparent 42%),
-    linear-gradient(220deg, rgba(37, 99, 235, 0.13), transparent 45%),
-    #eef6f3;
+    linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(239, 68, 68, 0.08)),
+    rgba(248, 250, 252, 0.88);
+  backdrop-filter: blur(6px);
 }
 
-.map-canvas {
-  position: relative;
-  min-height: 460px;
-  isolation: isolate;
+.map-status strong {
+  font-size: 1.08rem;
 }
 
-.map-canvas::before,
-.map-canvas::after {
-  position: absolute;
-  z-index: 0;
-  content: '';
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 38% 62% 48% 52%;
-}
-
-.map-canvas::before {
-  top: 11%;
-  left: 13%;
-  width: 34%;
-  height: 28%;
-}
-
-.map-canvas::after {
-  right: 10%;
-  bottom: 18%;
-  width: 40%;
-  height: 36%;
-}
-
-.river {
-  position: absolute;
-  z-index: 1;
-  left: -8%;
-  right: -8%;
-  height: 34px;
-  background: rgba(6, 182, 212, 0.28);
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  transform: rotate(-8deg);
-}
-
-.river-a {
-  top: 51%;
-}
-
-.river-b {
-  top: 57%;
-  height: 18px;
-  opacity: 0.48;
-}
-
-.map-label {
-  position: absolute;
-  z-index: 2;
-  padding: 5px 8px;
+.map-status span {
+  max-width: 360px;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  line-height: 1.55;
+}
+
+:global(.kakao-pin) {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  min-height: 34px;
+  gap: 7px;
+  padding: 6px 10px 6px 7px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.26);
   border-radius: 999px;
-  font-size: 0.76rem;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  font: inherit;
+  transform: translateY(0);
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    border-color 180ms ease;
+  white-space: nowrap;
+}
+
+:global(.kakao-pin:hover),
+:global(.kakao-pin.active) {
+  border-color: color-mix(in srgb, var(--pin-color) 42%, #ffffff);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.24);
+  transform: translateY(-5px);
+}
+
+:global(.kakao-pin-dot) {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  background: var(--pin-color);
+  border: 3px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pin-color) 28%, transparent);
+}
+
+:global(.kakao-pin-label) {
+  overflow: hidden;
+  display: inline-grid;
+  max-width: 0;
+  opacity: 0;
+  transition:
+    max-width 180ms ease,
+    opacity 180ms ease;
+}
+
+:global(.kakao-pin:hover .kakao-pin-label),
+:global(.kakao-pin.active .kakao-pin-label) {
+  max-width: 168px;
+  opacity: 1;
+}
+
+:global(.kakao-pin-label) {
+  color: #0f172a;
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+:global(.kakao-pin-type) {
+  color: #64748b;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
-.north {
-  top: 14%;
-  left: 24%;
-}
-
-.river-label {
-  top: 54%;
-  left: 50%;
-}
-
-.map-pin {
-  position: absolute;
-  z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: var(--pin-color);
-  background: #fff;
-  border: 2px solid currentColor;
-  border-radius: 999px;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.16);
-  transform: translate(-50%, -50%);
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.map-pin:hover {
-  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.2);
-  transform: translate(-50%, -58%);
-}
-
 @media (max-width: 720px) {
-  .map-panel,
-  .map-canvas {
+  .kakao-map {
     min-height: 360px;
   }
 }

@@ -20,12 +20,29 @@ let placesPromise = null
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
-function typeFor(contentTypeName = '') {
+function isRestaurantPlace(place = {}) {
+  return [place.content_type_name, place.title, place.cat3_name, place.addr1]
+    .filter(Boolean)
+    .join(' ')
+    .match(/음식|맛집|식당|카페|커피|레스토랑|한식|분식|고기|치킨|맥주|양조장/)
+}
+
+function typeFor(contentTypeName = '', place = {}) {
+  if (isRestaurantPlace(place)) return 'restaurant'
   if (contentTypeName.includes('숙박')) return 'accommodation'
   if (contentTypeName.includes('축제')) return 'festival'
   if (contentTypeName.includes('쇼핑')) return 'shopping'
   if (contentTypeName.includes('레포츠') || contentTypeName.includes('여행코스')) return 'nature'
   return 'attraction'
+}
+
+function colorForType(type) {
+  if (type === 'restaurant') return '#ef4444'
+  if (type === 'accommodation') return '#06b6d4'
+  if (type === 'nature') return '#10b981'
+  if (type === 'festival') return '#f59e0b'
+  if (type === 'shopping') return '#8b5cf6'
+  return '#2563eb'
 }
 
 function fallbackImageFor(place) {
@@ -55,14 +72,26 @@ function coordinatePercent(place) {
   }
 }
 
+function coordinateFromPercent(pin) {
+  const x = Number.isFinite(pin.x) ? pin.x : 50
+  const y = Number.isFinite(pin.y) ? pin.y : 50
+
+  return {
+    lng: SEOUL_BOUNDS.minLng + (x / 100) * (SEOUL_BOUNDS.maxLng - SEOUL_BOUNDS.minLng),
+    lat: SEOUL_BOUNDS.maxLat - (y / 100) * (SEOUL_BOUNDS.maxLat - SEOUL_BOUNDS.minLat),
+  }
+}
+
 function mapApiPlace(place) {
   const category = place.content_type_name || '관광지'
-  const type = typeFor(category)
+  const type = typeFor(category, place)
   const image = place.first_image_url || place.thumbnail_url || fallbackImageFor(place)
   const district = place.district_name || '서울'
   const address = place.addr1 || '주소 미제공'
   const name = place.title || '서울 여행지'
-  const coordinate = coordinatePercent(place)
+  const longitude = Number(place.longitude)
+  const latitude = Number(place.latitude)
+  const coordinate = coordinatePercent({ ...place, longitude, latitude })
 
   return {
     id: place.id,
@@ -81,8 +110,8 @@ function mapApiPlace(place) {
     image,
     summary: `${name}은(는) ${district}의 ${category} 여행정보입니다. ${address}`,
     tags: [category, district].filter(Boolean),
-    longitude: place.longitude,
-    latitude: place.latitude,
+    longitude: Number.isFinite(longitude) ? longitude : null,
+    latitude: Number.isFinite(latitude) ? latitude : null,
   }
 }
 
@@ -175,29 +204,47 @@ export async function fetchFestivals() {
 }
 
 export async function fetchMapPins({ max = 180 } = {}) {
-  const places = await loadApiPlaces()
+  let places = []
+
+  try {
+    const payload = await requestJson(`/places?skip=0&limit=${max}`)
+    places = Array.isArray(payload.items) ? payload.items.map(mapApiPlace) : []
+  } catch {
+    places = await loadApiPlaces()
+  }
+
   const pins = places
-    .filter((place) => Number.isFinite(place.x) && Number.isFinite(place.y))
+    .filter((place) => Number.isFinite(place.longitude) && Number.isFinite(place.latitude))
     .slice(0, max)
     .map((place) => ({
       id: `place-${place.id}`,
+      placeId: place.id,
+      contentId: place.contentId,
       name: place.name,
       type: place.type,
+      category: place.category,
+      district: place.district,
+      address: place.address,
+      image: place.image,
+      summary: place.summary,
+      lat: place.latitude,
+      lng: place.longitude,
       x: place.x,
       y: place.y,
-      color:
-        place.type === 'accommodation'
-          ? '#06b6d4'
-          : place.type === 'nature'
-            ? '#10b981'
-            : place.type === 'festival'
-              ? '#f59e0b'
-              : place.type === 'shopping'
-                ? '#8b5cf6'
-                : '#2563eb',
+      color: colorForType(place.type),
     }))
 
-  return pins.length ? pins : fallbackMapPins
+  return pins.length
+    ? pins
+    : fallbackMapPins.map((pin) => ({
+        ...pin,
+        ...coordinateFromPercent(pin),
+        color: colorForType(pin.type),
+        category: pin.type,
+        district: '서울',
+        address: '서울',
+        summary: pin.name,
+      }))
 }
 
 export async function searchAll(keyword = '') {
