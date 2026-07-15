@@ -11,42 +11,34 @@
 
     <section
       v-if="isLocalPickReady && localPickCards.length"
-      ref="pickSection"
       class="local-pick-section"
-      :style="{ '--pick-scroll-distance': `${pickScrollDistance}px` }"
       :aria-label="t('community.localPickAria')"
     >
-      <div class="local-pick-sticky">
-        <div class="local-pick-header">
-          <div>
-            <span>{{ t('community.monthPick', { month: currentMonthLabel }) }}</span>
-          </div>
+      <div class="local-pick-header">
+        <div>
+          <span>{{ t('community.monthPick', { month: currentMonthLabel }) }}</span>
         </div>
+      </div>
 
-        <div class="local-pick-viewport">
-          <div
-            ref="pickTrack"
-            class="local-pick-track"
-            :style="{ transform: `translate3d(${-pickTranslateX}px, 0, 0)` }"
+      <div ref="pickScroller" class="local-pick-viewport" @wheel="handlePickWheel">
+        <div class="local-pick-track">
+          <RouterLink
+            v-for="pick in localPickCards"
+            :key="pick.id"
+            class="local-pick-card"
+            :to="`/places/${pick.id}`"
+            draggable="false"
           >
-            <RouterLink
-              v-for="pick in localPickCards"
-              :key="pick.id"
-              class="local-pick-card"
-              :to="`/places/${pick.id}`"
-              draggable="false"
-            >
-              <img :src="pick.image" :alt="pick.name" draggable="false" />
-              <div class="local-pick-card-body">
-                <div>
-                  <span>{{ categoryLabel(pick.category) }}</span>
-                  <span>{{ pick.district }}</span>
-                </div>
-                <h3>{{ pick.name }}</h3>
-                <p>{{ pick.summary }}</p>
+            <img :src="pick.image" :alt="pick.name" draggable="false" />
+            <div class="local-pick-card-body">
+              <div>
+                <span>{{ categoryLabel(pick.category) }}</span>
+                <span>{{ pick.district }}</span>
               </div>
-            </RouterLink>
-          </div>
+              <h3>{{ pick.name }}</h3>
+              <p>{{ pick.summary }}</p>
+            </div>
+          </RouterLink>
         </div>
       </div>
     </section>
@@ -119,7 +111,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -140,12 +132,9 @@ const page = ref(1)
 const posts = ref([])
 const localPickPlaces = ref([])
 const isLocalPickReady = ref(false)
-const pickSection = ref(null)
-const pickTrack = ref(null)
-const pickTranslateX = ref(0)
-const pickScrollDistance = ref(0)
+const pickScroller = ref(null)
 const pageSize = 4
-let pickResizeObserver = null
+const basePostCategories = ['맛집/카페', '일정', '사진', '팁', '자연', '질문']
 
 const currentMonthLabel = computed(() =>
   new Intl.DateTimeFormat(locale.value, { month: 'long' }).format(new Date()),
@@ -155,7 +144,10 @@ const localPickCards = computed(() => localPickPlaces.value.slice(0, 6))
 
 const postCategories = computed(() => [
   '전체',
-  ...new Set(posts.value.map((post) => post.category)),
+  ...new Set([
+    ...basePostCategories,
+    ...posts.value.map((post) => post.category).filter(Boolean),
+  ]),
 ])
 
 const filteredPosts = computed(() => {
@@ -207,30 +199,21 @@ function categoryLabel(category) {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
-function updatePickScroll() {
-  const section = pickSection.value
-  if (!section) return
+function handlePickWheel(event) {
+  const scroller = pickScroller.value
+  if (!scroller) return
 
-  const stickyTop = window.matchMedia('(max-width: 720px)').matches ? 58 : 64
-  const start = section.offsetTop - stickyTop
-  const progress = window.scrollY - start
-  pickTranslateX.value = clamp(progress, 0, pickScrollDistance.value)
-}
+  const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth
+  if (maxScrollLeft <= 0) return
 
-function measurePickScroll() {
-  const track = pickTrack.value
-  if (!track) return
+  const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX
+  const isAtStart = scroller.scrollLeft <= 0
+  const isAtEnd = scroller.scrollLeft >= maxScrollLeft - 1
 
-  pickScrollDistance.value = Math.max(0, track.scrollWidth - window.innerWidth + 48)
-  updatePickScroll()
-}
+  if ((wheelDelta < 0 && isAtStart) || (wheelDelta > 0 && isAtEnd)) return
 
-function observePickTrack() {
-  if (!('ResizeObserver' in window) || !pickTrack.value) return
-
-  pickResizeObserver?.disconnect()
-  pickResizeObserver = new ResizeObserver(measurePickScroll)
-  pickResizeObserver.observe(pickTrack.value)
+  event.preventDefault()
+  scroller.scrollLeft = clamp(scroller.scrollLeft + wheelDelta, 0, maxScrollLeft)
 }
 
 async function loadLocalPickPlaces() {
@@ -242,9 +225,6 @@ async function loadLocalPickPlaces() {
 
   localPickPlaces.value = items
   isLocalPickReady.value = true
-  await nextTick()
-  measurePickScroll()
-  observePickTrack()
 }
 
 watch([keyword, activeCategory], () => {
@@ -252,19 +232,8 @@ watch([keyword, activeCategory], () => {
 })
 
 onMounted(async () => {
-  await nextTick()
-  measurePickScroll()
-  window.addEventListener('scroll', updatePickScroll, { passive: true })
-  window.addEventListener('resize', measurePickScroll)
-
   await loadPosts()
   loadLocalPickPlaces()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updatePickScroll)
-  window.removeEventListener('resize', measurePickScroll)
-  pickResizeObserver?.disconnect()
 })
 </script>
 
@@ -274,8 +243,8 @@ onBeforeUnmount(() => {
 }
 
 .community-page {
-  padding-top: 34px;
-  padding-bottom: 30px;
+  padding-top: 26px;
+  padding-bottom: 28px;
 }
 
 .community-page .section-title {
@@ -283,7 +252,7 @@ onBeforeUnmount(() => {
 }
 
 .community-page .section-title h1 {
-  font-size: clamp(1.92rem, 3vw, 2.48rem);
+  font-size: clamp(1.82rem, 2.8vw, 2.34rem);
 }
 
 .board-content {
@@ -291,32 +260,19 @@ onBeforeUnmount(() => {
 }
 
 .local-pick-section {
-  --pick-sticky-height: clamp(500px, 54vh, 640px);
   position: relative;
   width: 100vw;
-  min-height: calc(var(--pick-sticky-height) + var(--pick-scroll-distance));
-  margin: 0 0 2px calc(50% - 50vw);
+  margin: 0 0 clamp(22px, 3.4vh, 38px) calc(50% - 50vw);
+  padding: clamp(20px, 3vh, 34px) 0 clamp(22px, 3.4vh, 38px);
   color: var(--text);
   background: var(--surface-strong);
-}
-
-.local-pick-sticky {
-  position: sticky;
-  top: 64px;
-  display: flex;
-  overflow: hidden;
-  height: var(--pick-sticky-height);
-  min-height: 500px;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: clamp(24px, 3.8vh, 42px) 0 clamp(22px, 3.6vh, 38px);
 }
 
 .local-pick-header {
   display: grid;
   place-items: start;
-  padding: 0 max(24px, calc((100vw - 1180px) / 2));
+  padding: 0 clamp(18px, 5vw, 72px);
+  margin-bottom: 12px;
   text-align: left;
 }
 
@@ -328,29 +284,36 @@ onBeforeUnmount(() => {
 }
 
 .local-pick-viewport {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.local-pick-viewport::-webkit-scrollbar {
+  display: none;
 }
 
 .local-pick-track {
   display: flex;
   width: max-content;
-  gap: clamp(28px, 4.5vw, 72px);
-  padding: 0 max(24px, calc((100vw - 1180px) / 2));
-  will-change: transform;
+  gap: clamp(28px, 3.8vw, 70px);
+  padding: 0 clamp(18px, 5vw, 72px);
 }
 
 .local-pick-card {
   display: flex;
-  flex: 0 0 clamp(280px, 27vw, 430px);
+  flex: 0 0 clamp(360px, 27vw, 520px);
   flex-direction: column;
-  gap: 13px;
+  gap: 12px;
   color: var(--text);
+  scroll-snap-align: start;
 }
 
 .local-pick-card img {
   width: 100%;
-  aspect-ratio: 1 / 0.92;
+  aspect-ratio: 1 / 0.68;
   object-fit: cover;
   background: var(--placeholder);
   border-radius: var(--radius);
@@ -384,19 +347,15 @@ onBeforeUnmount(() => {
 .local-pick-card h3 {
   margin: 0;
   color: var(--text);
-  font-size: clamp(1.05rem, 1.6vw, 1.34rem);
-  line-height: 1.34;
+  font-size: clamp(1.08rem, 1.45vw, 1.42rem);
+  line-height: 1.32;
 }
 
 .local-pick-card p {
-  display: -webkit-box;
-  overflow: hidden;
   margin: 0;
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   line-height: 1.55;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
 :global([data-theme='dark']) .local-pick-section {
@@ -521,17 +480,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 620px) {
   .local-pick-section {
-    --pick-sticky-height: clamp(480px, 72vh, 540px);
-    min-height: calc(var(--pick-sticky-height) + var(--pick-scroll-distance));
     margin-top: 2px;
-  }
-
-  .local-pick-sticky {
-    top: 58px;
-    height: var(--pick-sticky-height);
-    min-height: 480px;
-    gap: 12px;
-    padding: 24px 0 30px;
+    padding: 20px 0 28px;
   }
 
   .local-pick-track {
@@ -540,7 +490,11 @@ onBeforeUnmount(() => {
   }
 
   .local-pick-card {
-    flex-basis: min(78vw, 310px);
+    flex-basis: min(82vw, 360px);
+  }
+
+  .local-pick-card img {
+    aspect-ratio: 1 / 0.76;
   }
 }
 </style>
