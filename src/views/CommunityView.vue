@@ -3,8 +3,8 @@
     <div class="container community-container">
       <div class="section-title">
         <div>
-          <h1>익명 여행 후기 게시판</h1>
-          <p>현지인이 남긴 여행 후기와 오늘 가기 좋은 장소를 함께 확인합니다.</p>
+          <h1>현지인 여행 후기 게시판</h1>
+          <p>익명으로 작성되는 게시판입니다. 현지인이 남긴 여행 후기와 오늘 가기 좋은 장소를 함께 확인합니다.</p>
         </div>
       </div>
     </div>
@@ -214,15 +214,28 @@ onBeforeUnmount(() => {
   max-width: 860px;
 }
 
+.community-page {
+  padding-top: 34px;
+  padding-bottom: 30px;
+}
+
+.community-page .section-title {
+  margin-bottom: 10px;
+}
+
+.community-page .section-title h1 {
+  font-size: clamp(1.92rem, 3vw, 2.48rem);
+}
+
 .board-content {
-  margin-top: 28px;
+  margin-top: 14px;
 }
 
 .local-pick-section {
   position: relative;
   width: 100vw;
   min-height: calc(100vh - 64px + var(--pick-scroll-distance));
-  margin: 8px 0 30px calc(50% - 50vw);
+  margin: 0 0 14px calc(50% - 50vw);
   color: var(--text);
   background: var(--surface-strong);
 }
@@ -233,11 +246,11 @@ onBeforeUnmount(() => {
   display: flex;
   overflow: hidden;
   height: calc(100vh - 64px);
-  min-height: 620px;
+  min-height: 560px;
   flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-  padding: clamp(42px, 7vh, 80px) 0 clamp(48px, 8vh, 92px);
+  justify-content: flex-start;
+  gap: 14px;
+  padding: clamp(32px, 5vh, 54px) 0 clamp(34px, 5.5vh, 62px);
 }
 
 .local-pick-header {
@@ -455,9 +468,9 @@ onBeforeUnmount(() => {
   .local-pick-sticky {
     top: 58px;
     height: calc(100vh - 58px);
-    min-height: 560px;
-    gap: 14px;
-    padding: 40px 0 52px;
+    min-height: 520px;
+    gap: 12px;
+    padding: 28px 0 38px;
   }
 
   .local-pick-track {
