@@ -3,7 +3,7 @@
     <div class="container">
       <div class="page-title">
         <h1>축제 캘린더</h1>
-        <p>서울 7월 행사와 이후 주요 야간 축제를 함께 확인합니다.</p>
+        <p>백엔드 서울 축제공연행사 데이터를 함께 확인합니다.</p>
       </div>
 
       <div class="festival-layout">
@@ -62,15 +62,21 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { festivals } from '../data/localhub'
+import { computed, onMounted, ref } from 'vue'
+import { festivals as fallbackFestivals } from '../data/localhub'
+import { fetchFestivals } from '../services/localHubApi'
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 const selectedDay = ref(20)
+const festivals = ref([...fallbackFestivals])
 const leadingBlanks = Array.from({ length: new Date(2026, 6, 1).getDay() }, (_, index) => index)
 
-const festivalsOn = (day) => festivals.filter((festival) => festival.days.includes(day))
+const festivalsOn = (day) => festivals.value.filter((festival) => festival.days.includes(day))
 const selectedEvents = computed(() => festivalsOn(selectedDay.value))
+
+onMounted(async () => {
+  festivals.value = await fetchFestivals()
+})
 </script>
 
 <style scoped>
