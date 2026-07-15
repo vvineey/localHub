@@ -1,17 +1,56 @@
 <template>
-  <section class="section">
+  <section class="section community-page">
     <div class="container community-container">
       <div class="section-title">
         <div>
           <h1>익명 여행 후기 게시판</h1>
-          <p>회원가입 없이 제목, 내용, 수정용 비밀번호로 게시글을 관리합니다.</p>
+          <p>현지인이 남긴 여행 후기와 오늘 가기 좋은 장소를 함께 확인합니다.</p>
         </div>
-        <RouterLink class="btn btn-primary" to="/community/new">
-          <PenLine :size="16" />
-          글쓰기
-        </RouterLink>
       </div>
+    </div>
 
+    <section
+      ref="pickSection"
+      class="local-pick-section"
+      :style="{ '--pick-scroll-distance': `${pickScrollDistance}px` }"
+      aria-label="현지인 Pick 관광지"
+    >
+      <div class="local-pick-sticky">
+        <div class="local-pick-header">
+          <div>
+            <span>{{ currentMonthLabel }} 현지인 Pick !</span>
+          </div>
+        </div>
+
+        <div class="local-pick-viewport">
+          <div
+            ref="pickTrack"
+            class="local-pick-track"
+            :style="{ transform: `translate3d(${-pickTranslateX}px, 0, 0)` }"
+          >
+            <RouterLink
+              v-for="pick in localPickCards"
+              :key="pick.id"
+              class="local-pick-card"
+              :to="`/places/${pick.id}`"
+              draggable="false"
+            >
+              <img :src="pick.image" :alt="pick.name" draggable="false" />
+              <div class="local-pick-card-body">
+                <div>
+                  <span>{{ pick.category }}</span>
+                  <span>{{ pick.district }}</span>
+                </div>
+                <h3>{{ pick.name }}</h3>
+                <p>{{ pick.summary }}</p>
+              </div>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container community-container board-content">
       <div class="search-row board-search">
         <Search :size="17" />
         <input v-model="keyword" type="search" placeholder="게시글 제목 또는 내용 검색" />
@@ -79,7 +118,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   ChevronLeft,
@@ -87,16 +126,25 @@ import {
   Eye,
   Heart,
   MessageSquare,
-  PenLine,
   Search,
 } from '@lucide/vue'
+import { places as localPickPlaces } from '../data/localhub'
 import { useCommunityStore } from '../stores/community'
 
 const store = useCommunityStore()
 const keyword = ref('')
 const activeCategory = ref('전체')
 const page = ref(1)
+const pickSection = ref(null)
+const pickTrack = ref(null)
+const pickTranslateX = ref(0)
+const pickScrollDistance = ref(0)
 const pageSize = 4
+let pickResizeObserver = null
+
+const currentMonthLabel = computed(() => `${new Date().getMonth() + 1}월`)
+
+const localPickCards = computed(() => localPickPlaces.slice(0, 6))
 
 const postCategories = computed(() => [
   '전체',
@@ -118,14 +166,164 @@ const pagedPosts = computed(() =>
   filteredPosts.value.slice((page.value - 1) * pageSize, page.value * pageSize),
 )
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+function updatePickScroll() {
+  const section = pickSection.value
+  if (!section) return
+
+  const stickyTop = window.matchMedia('(max-width: 720px)').matches ? 58 : 64
+  const start = section.offsetTop - stickyTop
+  const progress = window.scrollY - start
+  pickTranslateX.value = clamp(progress, 0, pickScrollDistance.value)
+}
+
+function measurePickScroll() {
+  const track = pickTrack.value
+  if (!track) return
+
+  pickScrollDistance.value = Math.max(0, track.scrollWidth - window.innerWidth + 48)
+  updatePickScroll()
+}
+
 watch([keyword, activeCategory], () => {
   page.value = 1
+})
+
+onMounted(async () => {
+  await nextTick()
+  measurePickScroll()
+  window.addEventListener('scroll', updatePickScroll, { passive: true })
+  window.addEventListener('resize', measurePickScroll)
+
+  if ('ResizeObserver' in window && pickTrack.value) {
+    pickResizeObserver = new ResizeObserver(measurePickScroll)
+    pickResizeObserver.observe(pickTrack.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', updatePickScroll)
+  window.removeEventListener('resize', measurePickScroll)
+  pickResizeObserver?.disconnect()
 })
 </script>
 
 <style scoped>
 .community-container {
   max-width: 860px;
+}
+
+.board-content {
+  margin-top: 28px;
+}
+
+.local-pick-section {
+  position: relative;
+  width: 100vw;
+  min-height: calc(100vh - 64px + var(--pick-scroll-distance));
+  margin: 8px 0 30px calc(50% - 50vw);
+  color: #fff;
+  background: #000;
+}
+
+.local-pick-sticky {
+  position: sticky;
+  top: 64px;
+  display: flex;
+  overflow: hidden;
+  height: calc(100vh - 64px);
+  min-height: 620px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: clamp(42px, 7vh, 80px) 0 clamp(48px, 8vh, 92px);
+}
+
+.local-pick-header {
+  display: grid;
+  place-items: start;
+  padding: 0 max(24px, calc((100vw - 1180px) / 2));
+  text-align: left;
+}
+
+.local-pick-header span {
+  display: block;
+  color: #bdbdbd;
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.local-pick-viewport {
+  overflow: hidden;
+  width: 100%;
+}
+
+.local-pick-track {
+  display: flex;
+  width: max-content;
+  gap: clamp(28px, 4.5vw, 72px);
+  padding: 0 max(24px, calc((100vw - 1180px) / 2));
+  will-change: transform;
+}
+
+.local-pick-card {
+  display: flex;
+  flex: 0 0 clamp(280px, 27vw, 430px);
+  flex-direction: column;
+  gap: 13px;
+  color: #fff;
+}
+
+.local-pick-card img {
+  width: 100%;
+  aspect-ratio: 1 / 0.92;
+  object-fit: cover;
+  background: #111;
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+
+.local-pick-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.local-pick-card-body > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.local-pick-card-body span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 23px;
+  padding: 0 8px;
+  color: #f5f5f5;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.local-pick-card h3 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.05rem, 1.6vw, 1.34rem);
+  line-height: 1.34;
+}
+
+.local-pick-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .board-search {
@@ -205,15 +403,39 @@ watch([keyword, activeCategory], () => {
   width: 40px;
   height: 40px;
   color: var(--muted);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   font-weight: 800;
 }
 
 .page-btn.active {
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-color: var(--primary);
+}
+
+@media (max-width: 620px) {
+  .local-pick-section {
+    min-height: calc(100vh - 58px + var(--pick-scroll-distance));
+    margin-top: 2px;
+  }
+
+  .local-pick-sticky {
+    top: 58px;
+    height: calc(100vh - 58px);
+    min-height: 560px;
+    gap: 14px;
+    padding: 40px 0 52px;
+  }
+
+  .local-pick-track {
+    gap: 22px;
+    padding: 0 18px;
+  }
+
+  .local-pick-card {
+    flex-basis: min(78vw, 310px);
+  }
 }
 </style>
