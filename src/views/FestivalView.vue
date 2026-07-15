@@ -1,127 +1,265 @@
 <template>
-  <section class="section">
-    <div class="container">
+  <section class="section festival-section">
+    <div class="container festival-container">
       <div class="page-title">
         <h1>{{ t('festivals.title') }}</h1>
         <p>{{ t('festivals.description') }}</p>
       </div>
 
-      <div class="festival-layout">
+      <div class="festival-page-stack">
+        <section v-if="featuredFestivals.length" class="featured-festivals">
+          <div class="festival-section-head">
+            <div>
+              <span class="badge amber">{{ t('festivals.mvp') }}</span>
+              <h2>{{ t('festivals.featuredTitle') }}</h2>
+              <p>{{ t('festivals.featuredDescription') }}</p>
+            </div>
+          </div>
+
+          <TransitionGroup name="featured-fade" tag="div" class="featured-grid">
+            <RouterLink
+              v-for="festival in featuredFestivals"
+              :key="festival.id"
+              class="featured-card"
+              :to="`/places/${festival.id}`"
+            >
+              <img :src="festival.image" :alt="festival.name" />
+              <div class="featured-overlay">
+                <span>{{ festival.date }}</span>
+                <h3>{{ festival.name }}</h3>
+                <p>{{ festival.summary }}</p>
+                <small><MapPin :size="15" /> {{ festival.location }}</small>
+              </div>
+            </RouterLink>
+          </TransitionGroup>
+        </section>
+
         <div class="calendar panel">
           <div class="calendar-head">
-            <h2>{{ t('festivals.monthTitle') }}</h2>
-            <span class="badge amber">{{ t('festivals.mvp') }}</span>
+            <div>
+              <h2>{{ t('festivals.monthTitle') }}</h2>
+              <p>{{ t('festivals.calendarDescription') }}</p>
+            </div>
+            <span class="badge amber">{{ t('festivals.allFestivals') }}</span>
           </div>
-          <div class="weekday" v-for="day in weekdays" :key="day">{{ day }}</div>
-          <span v-for="blank in leadingBlanks" :key="`blank-${blank}`" class="blank-cell"></span>
-          <button
-            v-for="day in 31"
-            :key="day"
-            type="button"
-            class="day-cell"
-            :class="{ active: selectedDay === day, hasEvent: festivalsOn(day).length }"
-            @click="selectedDay = day"
-          >
-            <span>{{ day }}</span>
-            <small v-for="festival in visibleFestivalsOn(day)" :key="festival.id">{{ festival.name }}</small>
-            <small v-if="hiddenFestivalsCount(day)" class="more-events">+{{ hiddenFestivalsCount(day) }}</small>
-          </button>
+
+          <div class="weekday-row">
+            <div class="weekday" v-for="day in weekdays" :key="day">{{ day }}</div>
+          </div>
+
+          <div class="calendar-body">
+            <div v-for="week in calendarWeeks" :key="week.index" class="calendar-week">
+              <button
+                v-for="day in week.days"
+                :key="day.id"
+                type="button"
+                class="calendar-day"
+                :class="{ active: selectedDay === day.value, 'has-event': day.events.length }"
+                :style="{ gridColumn: `${day.column} / span 1` }"
+                :disabled="!day.value"
+                @click="openCalendarDay(day)"
+              >
+                <span>{{ day.value || '' }}</span>
+                <small v-if="day.events.length">{{ t('festivals.eventCount', { count: day.events.length }) }}</small>
+              </button>
+
+              <RouterLink
+                v-for="segment in week.segments"
+                :key="segment.key"
+                class="calendar-event"
+                :style="calendarEventStyle(segment)"
+                :title="`${segment.name} · ${segment.date}`"
+                :to="`/places/${segment.id}`"
+              >
+                <CalendarDays :size="13" />
+                <span>{{ segment.name }}</span>
+              </RouterLink>
+
+              <span
+                v-if="week.hiddenCount"
+                class="calendar-overflow"
+                :style="calendarOverflowStyle(week.hiddenCount)"
+              >
+                {{ t('festivals.moreEvents', { count: week.hiddenCount }) }}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <aside class="event-side">
-          <div class="event-panel">
-            <h2>{{ t('festivals.selectedEvents', { day: selectedDay }) }}</h2>
-            <div v-if="selectedEvents.length" class="event-stack">
-              <article v-for="festival in selectedEvents" :key="festival.id">
-                <img :src="festival.image" :alt="festival.name" />
-                <div>
-                  <strong>{{ festival.name }}</strong>
-                  <span>{{ festival.location }}</span>
-                  <p>{{ festival.summary }}</p>
-                </div>
-              </article>
+        <section class="event-panel all-festivals-panel">
+          <div class="event-panel-head">
+            <div>
+              <h2>{{ t('festivals.allFestivals') }}</h2>
+              <p>{{ t('festivals.allFestivalsDescription') }}</p>
             </div>
-            <p v-else class="muted">{{ t('festivals.noEvents') }}</p>
+            <span>{{ festivalRangeLabel }}</span>
           </div>
 
-          <div class="event-panel">
-            <div class="event-panel-head">
-              <h2>{{ t('festivals.allFestivals') }}</h2>
-              <span>{{ festivalRangeLabel }}</span>
-            </div>
-            <div class="mini-list" :class="{ loading: isFestivalPageLoading }">
-              <article v-for="festival in festivals" :key="festival.id">
-                <span :style="{ background: festival.color }"></span>
-                <div>
-                  <strong>{{ festival.name }}</strong>
-                  <small>{{ festival.date }} · {{ festival.location }}</small>
-                </div>
-              </article>
-            </div>
-            <div v-if="festivalPageCount > 1" class="festival-pagination">
-              <div class="pagination-controls">
-                <button
-                  class="icon-btn"
-                  type="button"
-                  :disabled="festivalPage === 1 || isFestivalPageLoading"
-                  :title="t('common.previous')"
-                  @click="festivalPage--"
-                >
-                  <ChevronLeft :size="16" />
-                </button>
-                <button
-                  v-for="pageNumber in visibleFestivalPages"
-                  :key="pageNumber"
-                  type="button"
-                  class="page-btn"
-                  :class="{ active: festivalPage === pageNumber }"
-                  :disabled="isFestivalPageLoading"
-                  @click="festivalPage = pageNumber"
-                >
-                  {{ pageNumber }}
-                </button>
-                <button
-                  class="icon-btn"
-                  type="button"
-                  :disabled="festivalPage === festivalPageCount || isFestivalPageLoading"
-                  :title="t('common.next')"
-                  @click="festivalPage++"
-                >
-                  <ChevronRight :size="16" />
-                </button>
+          <div class="all-festival-grid" :class="{ loading: isFestivalPageLoading }">
+            <RouterLink
+              v-for="festival in festivals"
+              :key="festival.id"
+              class="all-festival-card"
+              :to="`/places/${festival.id}`"
+            >
+              <img :src="festival.image" :alt="festival.name" />
+              <div>
+                <span>{{ festival.date }}</span>
+                <strong>{{ festival.name }}</strong>
+                <p>{{ festival.location }}</p>
               </div>
+            </RouterLink>
+          </div>
+
+          <div v-if="festivalPageCount > 1" class="festival-pagination">
+            <div class="pagination-controls">
+              <button
+                class="icon-btn"
+                type="button"
+                :disabled="festivalPage === 1 || isFestivalPageLoading"
+                :title="t('common.previous')"
+                @click="festivalPage--"
+              >
+                <ChevronLeft :size="16" />
+              </button>
+              <button
+                v-for="pageNumber in visibleFestivalPages"
+                :key="pageNumber"
+                type="button"
+                class="page-btn"
+                :class="{ active: festivalPage === pageNumber }"
+                :disabled="isFestivalPageLoading"
+                @click="festivalPage = pageNumber"
+              >
+                {{ pageNumber }}
+              </button>
+              <button
+                class="icon-btn"
+                type="button"
+                :disabled="festivalPage === festivalPageCount || isFestivalPageLoading"
+                :title="t('common.next')"
+                @click="festivalPage++"
+              >
+                <ChevronRight :size="16" />
+              </button>
             </div>
           </div>
-        </aside>
+        </section>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronLeft, ChevronRight } from '@lucide/vue'
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from '@lucide/vue'
 import { festivals as fallbackFestivals } from '../data/localhub'
 import { fetchFestivals, fetchFestivalsPage } from '../services/localHubApi'
 
 const { t, tm } = useI18n()
-const FESTIVAL_PAGE_SIZE = 5
-const MAX_DAY_EVENT_LABELS = 2
+const router = useRouter()
+const FESTIVAL_PAGE_SIZE = 9
+const FEATURED_CARD_COUNT = 3
+const FEATURED_ROTATE_INTERVAL_MS = 4200
+const CALENDAR_YEAR = 2026
+const CALENDAR_MONTH_INDEX = 6
+const CALENDAR_DAYS = 31
+const MAX_WEEK_EVENT_ROWS = 4
+const EVENT_COLORS = ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#06b6d4']
+
 const weekdays = computed(() => tm('festivals.weekdays'))
-const selectedDay = ref(20)
+const selectedDay = ref(1)
 const calendarFestivals = ref([...fallbackFestivals])
 const festivals = ref(fallbackFestivals.slice(0, FESTIVAL_PAGE_SIZE))
 const totalFestivals = ref(fallbackFestivals.length)
 const festivalPage = ref(1)
+const featuredOffset = ref(0)
 const isFestivalPageLoading = ref(false)
-const leadingBlanks = Array.from({ length: new Date(2026, 6, 1).getDay() }, (_, index) => index)
 let festivalPageRequestId = 0
+let featuredRotateTimerId = null
 
-const festivalsOn = (day) => calendarFestivals.value.filter((festival) => festival.days.includes(day))
-const visibleFestivalsOn = (day) => festivalsOn(day).slice(0, MAX_DAY_EVENT_LABELS)
-const hiddenFestivalsCount = (day) => Math.max(0, festivalsOn(day).length - MAX_DAY_EVENT_LABELS)
-const selectedEvents = computed(() => festivalsOn(selectedDay.value))
+const festivalSource = computed(() => {
+  if (calendarFestivals.value.length) return calendarFestivals.value
+  return festivals.value
+})
+
+const featuredFestivals = computed(() => {
+  const source = festivalSource.value.filter((festival) => festival.image)
+  if (!source.length) return []
+
+  return Array.from({ length: Math.min(FEATURED_CARD_COUNT, source.length) }, (_, index) => {
+    return source[(featuredOffset.value + index) % source.length]
+  })
+})
+
+const calendarWeeks = computed(() => {
+  const firstWeekday = new Date(CALENDAR_YEAR, CALENDAR_MONTH_INDEX, 1).getDay()
+  const totalCells = Math.ceil((firstWeekday + CALENDAR_DAYS) / 7) * 7
+  const weekCount = totalCells / 7
+
+  return Array.from({ length: weekCount }, (_, weekIndex) => {
+    const days = Array.from({ length: 7 }, (_, columnIndex) => {
+      const value = weekIndex * 7 + columnIndex - firstWeekday + 1
+      const inMonth = value >= 1 && value <= CALENDAR_DAYS
+      const events = inMonth ? festivalsOn(value) : []
+
+      return {
+        id: `${weekIndex}-${columnIndex}`,
+        value: inMonth ? value : null,
+        column: columnIndex + 1,
+        events,
+      }
+    })
+
+    const weekDayValues = days.map((day) => day.value).filter(Boolean)
+    const weekStart = Math.min(...weekDayValues)
+    const weekEnd = Math.max(...weekDayValues)
+    const rowEnds = []
+
+    const candidates = festivalSource.value
+      .map((festival, index) => {
+        const eventDays = Array.isArray(festival.days)
+          ? festival.days.filter((day) => day >= weekStart && day <= weekEnd)
+          : []
+
+        if (!eventDays.length) return null
+
+        const startDay = Math.min(...eventDays)
+        const endDay = Math.max(...eventDays)
+        const startColumn = days.find((day) => day.value === startDay)?.column || 1
+        const endColumn = days.find((day) => day.value === endDay)?.column || startColumn
+
+        return {
+          ...festival,
+          key: `${festival.id}-${weekIndex}`,
+          startColumn,
+          span: endColumn - startColumn + 1,
+          color: festival.color || EVENT_COLORS[index % EVENT_COLORS.length],
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.startColumn - b.startColumn || b.span - a.span || String(a.name).localeCompare(String(b.name)))
+
+    const placedSegments = candidates.map((segment) => {
+      const reusableRow = rowEnds.findIndex((endColumn) => endColumn < segment.startColumn)
+      const row = reusableRow === -1 ? rowEnds.length : reusableRow
+      rowEnds[row] = segment.startColumn + segment.span - 1
+      return { ...segment, row }
+    })
+
+    const segments = placedSegments.filter((segment) => segment.row < MAX_WEEK_EVENT_ROWS)
+
+    return {
+      index: weekIndex,
+      days,
+      segments,
+      hiddenCount: Math.max(0, placedSegments.length - segments.length),
+    }
+  })
+})
+
 const festivalPageCount = computed(() => Math.max(1, Math.ceil(totalFestivals.value / FESTIVAL_PAGE_SIZE)))
 
 const visibleFestivalPages = computed(() => {
@@ -142,6 +280,35 @@ const festivalRangeLabel = computed(() => {
     end: end.toLocaleString(),
   })
 })
+
+function festivalsOn(day) {
+  return festivalSource.value.filter((festival) => Array.isArray(festival.days) && festival.days.includes(day))
+}
+
+function calendarEventStyle(segment) {
+  return {
+    '--event-row': segment.row,
+    '--event-color': segment.color,
+    gridColumn: `${segment.startColumn} / span ${segment.span}`,
+  }
+}
+
+function calendarOverflowStyle() {
+  return {
+    '--event-row': MAX_WEEK_EVENT_ROWS,
+    gridColumn: '1 / -1',
+  }
+}
+
+function openCalendarDay(day) {
+  if (!day.value) return
+
+  selectedDay.value = day.value
+
+  if (day.events.length) {
+    router.push(`/places/${day.events[0].id}`)
+  }
+}
 
 async function loadCalendarFestivals() {
   calendarFestivals.value = await fetchFestivals()
@@ -175,204 +342,424 @@ async function loadFestivalPage() {
   }
 }
 
+function startFeaturedRotation() {
+  if (featuredRotateTimerId) {
+    window.clearInterval(featuredRotateTimerId)
+  }
+
+  featuredRotateTimerId = window.setInterval(() => {
+    const sourceLength = festivalSource.value.length
+    if (sourceLength > FEATURED_CARD_COUNT) {
+      featuredOffset.value = (featuredOffset.value + 1) % sourceLength
+    }
+  }, FEATURED_ROTATE_INTERVAL_MS)
+}
+
 watch(festivalPage, () => {
   loadFestivalPage()
 })
 
+watch(festivalSource, () => {
+  featuredOffset.value = 0
+})
+
 onMounted(async () => {
-  loadCalendarFestivals()
-  loadFestivalPage()
+  await Promise.all([loadCalendarFestivals(), loadFestivalPage()])
+  startFeaturedRotation()
+})
+
+onBeforeUnmount(() => {
+  if (featuredRotateTimerId) {
+    window.clearInterval(featuredRotateTimerId)
+  }
 })
 </script>
 
 <style scoped>
-.festival-layout {
+.festival-page-stack {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 18px;
+  gap: 22px;
+}
+
+.festival-section-head,
+.event-panel-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.festival-section-head h2,
+.event-panel-head h2 {
+  margin: 8px 0 0;
+  color: var(--text);
+  font-size: 1.22rem;
+  line-height: 1.28;
+}
+
+.festival-section-head p,
+.event-panel-head p,
+.calendar-head p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.featured-festivals {
+  display: grid;
+  gap: 12px;
+}
+
+.featured-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.featured-card {
+  position: relative;
+  overflow: hidden;
+  min-height: clamp(220px, 22vw, 330px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.featured-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition:
+    filter 260ms ease,
+    opacity 260ms ease,
+    transform 320ms ease;
+}
+
+.featured-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  gap: 8px;
+  padding: clamp(16px, 2vw, 24px);
+  color: #fff;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.78)),
+    rgba(0, 0, 0, 0.28);
+  transform: translateY(10px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+.featured-card:hover img,
+.featured-card:focus-visible img {
+  opacity: 0.5;
+  filter: saturate(0.9);
+  transform: scale(1.035);
+}
+
+.featured-card:hover .featured-overlay,
+.featured-card:focus-visible .featured-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.featured-overlay span,
+.featured-overlay small {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.featured-overlay h3 {
+  margin: 0;
+  font-size: clamp(1.18rem, 1.8vw, 1.62rem);
+  line-height: 1.25;
+}
+
+.featured-overlay p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.featured-overlay small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.featured-fade-move,
+.featured-fade-enter-active,
+.featured-fade-leave-active {
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
+}
+
+.featured-fade-enter-from,
+.featured-fade-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 .calendar {
-  display: grid;
-  align-self: start;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
   overflow: hidden;
-  background: var(--line);
+  background: var(--surface);
 }
 
 .calendar-head {
   display: flex;
-  align-items: center;
+  align-items: end;
   justify-content: space-between;
-  grid-column: 1 / -1;
+  gap: 16px;
   padding: 18px;
   background: var(--surface);
 }
 
 .calendar-head h2 {
   margin: 0;
+  color: var(--text);
+  font-size: 1.24rem;
 }
 
-.weekday,
-.blank-cell,
-.day-cell {
-  min-height: 58px;
-  background: var(--surface);
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
 }
 
 .weekday {
   display: grid;
   place-items: center;
+  min-height: 42px;
   color: var(--muted);
+  border-right: 1px solid var(--line-soft);
   font-size: 0.82rem;
   font-weight: 850;
 }
 
-.day-cell {
+.weekday:last-child {
+  border-right: 0;
+}
+
+.calendar-body {
   display: grid;
-  align-content: start;
-  gap: 5px;
-  min-height: 108px;
+}
+
+.calendar-week {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 148px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.calendar-day {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 148px;
   padding: 10px;
   color: var(--text);
+  background: transparent;
+  border-right: 1px solid var(--line-soft);
   text-align: left;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
 }
 
-.blank-cell {
-  display: block;
+.calendar-day:nth-of-type(7n) {
+  border-right: 0;
 }
 
-.day-cell:hover,
-.day-cell.active {
+.calendar-day:disabled {
+  cursor: default;
+  background: var(--surface-soft);
+}
+
+.calendar-day:not(:disabled):hover,
+.calendar-day.active {
   background: var(--primary-soft);
 }
 
-.day-cell.hasEvent span {
-  color: var(--primary);
-  font-weight: 900;
+.calendar-day > span {
+  color: var(--muted);
+  font-weight: 850;
 }
 
-.day-cell small {
-  display: block;
-  overflow: hidden;
-  padding: 4px 6px;
-  color: var(--on-primary);
-  background: var(--primary);
-  border-radius: 6px;
+.calendar-day.has-event > span,
+.calendar-day.active > span {
+  color: var(--primary);
+}
+
+.calendar-day small {
+  flex: 0 0 auto;
+  color: var(--muted-light);
   font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.calendar-event,
+.calendar-overflow {
+  z-index: 2;
+  align-self: start;
+  min-width: 0;
+  height: 24px;
+  margin: 0 3px;
+  margin-top: calc(42px + (var(--event-row) * 27px));
+  border-radius: 5px;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 24px;
+}
+
+.calendar-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #fff;
+  background: var(--event-color);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.calendar-event:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.calendar-event span {
+  overflow: hidden;
+  min-width: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.day-cell .more-events {
-  color: var(--primary);
-  background: var(--primary-soft);
+.calendar-event svg {
+  flex: 0 0 auto;
 }
 
-.event-side {
-  display: grid;
-  align-content: start;
-  gap: 14px;
+.calendar-overflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
 }
 
 .event-panel {
+  padding: 18px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
-}
-
-.event-panel h2 {
-  margin: 0 0 14px;
-  font-size: 1.1rem;
 }
 
 .event-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 14px;
 }
 
-.event-panel-head h2 {
-  margin: 0;
-}
-
-.event-panel-head span {
+.event-panel-head > span {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 750;
+  font-size: 0.84rem;
+  font-weight: 800;
   white-space: nowrap;
 }
 
-.event-stack {
+.all-festival-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.event-stack article {
-  overflow: hidden;
-  border-radius: var(--radius);
+.all-festival-grid.loading {
+  opacity: 0.58;
+}
+
+.all-festival-card {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 124px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 110px;
+  padding: 10px;
   background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
 }
 
-.event-stack img {
-  width: 100%;
-  height: 140px;
+.all-festival-card:hover {
+  background: var(--surface);
+  border-color: var(--line);
+  transform: translateY(-2px);
+}
+
+.all-festival-card img {
+  width: 124px;
+  height: 88px;
   object-fit: cover;
+  background: var(--placeholder);
+  border-radius: var(--radius);
 }
 
-.event-stack div {
-  padding: 12px;
+.all-festival-card div {
+  min-width: 0;
 }
 
-.event-stack strong,
-.event-stack span {
+.all-festival-card span,
+.all-festival-card strong,
+.all-festival-card p {
   display: block;
 }
 
-.event-stack span,
-.event-stack p {
+.all-festival-card span {
+  color: var(--muted-light);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.all-festival-card strong {
+  overflow: hidden;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.all-festival-card p {
+  overflow: hidden;
+  margin: 7px 0 0;
   color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.event-stack p {
-  margin: 8px 0 0;
-  line-height: 1.55;
-}
-
-.mini-list {
-  display: grid;
-  gap: 12px;
-}
-
-.mini-list.loading {
-  opacity: 0.55;
-}
-
-.mini-list article {
-  display: flex;
-  gap: 10px;
-}
-
-.mini-list article > span {
-  width: 10px;
-  min-height: 42px;
-  border-radius: 999px;
-}
-
-.mini-list strong,
-.mini-list small {
-  display: block;
-}
-
-.mini-list small {
-  margin-top: 4px;
-  color: var(--muted);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .festival-pagination {
@@ -409,20 +796,81 @@ onMounted(async () => {
   opacity: 0.45;
 }
 
-@media (max-width: 980px) {
-  .festival-layout {
+@media (max-width: 1120px) {
+  .all-festival-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 880px) {
+  .featured-grid {
     grid-template-columns: 1fr;
+  }
+
+  .featured-card {
+    min-height: 260px;
+  }
+
+  .calendar-week {
+    min-height: 122px;
+  }
+
+  .calendar-day {
+    min-height: 122px;
+    padding: 8px;
+  }
+
+  .calendar-day small {
+    display: none;
+  }
+
+  .calendar-event,
+  .calendar-overflow {
+    height: 22px;
+    margin-top: calc(34px + (var(--event-row) * 24px));
+    font-size: 0.68rem;
+    line-height: 22px;
   }
 }
 
 @media (max-width: 680px) {
-  .day-cell {
-    min-height: 76px;
-    padding: 7px;
+  .festival-section-head,
+  .event-panel-head,
+  .calendar-head {
+    align-items: start;
+    flex-direction: column;
   }
 
-  .day-cell small {
+  .weekday {
+    min-height: 34px;
+    font-size: 0.74rem;
+  }
+
+  .calendar-week {
+    min-height: 92px;
+  }
+
+  .calendar-day {
+    min-height: 92px;
+    padding: 6px;
+  }
+
+  .calendar-event,
+  .calendar-overflow {
     display: none;
+  }
+
+  .all-festival-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .all-festival-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .all-festival-card img {
+    width: 96px;
+    height: 74px;
   }
 }
 </style>
