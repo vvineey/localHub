@@ -46,7 +46,7 @@ defineProps({
   position: relative;
   height: 178px;
   overflow: hidden;
-  background: #dbeafe;
+  background: var(--placeholder);
 }
 
 .place-image img {
@@ -64,7 +64,7 @@ defineProps({
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--floating-surface);
   backdrop-filter: blur(8px);
 }
 
