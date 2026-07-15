@@ -62,15 +62,17 @@
           <strong>{{ index + 1 }}</strong>
           <div>
             <h3>{{ post.title }}</h3>
-            <p v-if="firstComment(post)">
-              <MessageCircle :size="14" />
-              <b>{{ firstComment(post).author_name || t('community.anonymous') }}</b>
-              {{ firstComment(post).content }}
-            </p>
-            <p v-else>
-              <MessageCircle :size="14" />
-              {{ t('community.noComments') }}
-            </p>
+            <Transition name="realtime-comment" mode="out-in">
+              <p v-if="activePopularComment(post)" :key="popularCommentKey(post)">
+                <MessageCircle :size="14" />
+                <b>{{ activePopularComment(post).author_name || t('community.anonymous') }}</b>
+                {{ activePopularComment(post).content }}
+              </p>
+              <p v-else :key="popularCommentKey(post)">
+                <MessageCircle :size="14" />
+                {{ t('community.noComments') }}
+              </p>
+            </Transition>
           </div>
           <span>
             <Eye :size="14" />
@@ -176,7 +178,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -200,10 +202,13 @@ const sortMode = ref('latest')
 const page = ref(1)
 const posts = ref([])
 const popularPosts = ref([])
+const activeCommentIndex = ref(0)
 const localPickPlaces = ref([...fallbackLocalPickPlaces])
 const isLocalPickReady = ref(true)
 const pickScroller = ref(null)
 const pageSize = 4
+const COMMENT_ROTATE_INTERVAL_MS = 2800
+let commentRotateTimerId = null
 const basePostCategories = ['맛집/카페', '일정', '사진', '팁', '자연', '질문']
 
 const currentMonthLabel = computed(() =>
@@ -270,8 +275,22 @@ function commentPreview(post) {
   return Array.isArray(post.comment_preview) ? post.comment_preview.slice(0, 2) : []
 }
 
-function firstComment(post) {
-  return commentPreview(post)[0] || null
+function popularComments(post) {
+  return Array.isArray(post.comment_preview)
+    ? post.comment_preview.filter((comment) => comment?.content)
+    : []
+}
+
+function activePopularComment(post) {
+  const comments = popularComments(post)
+  if (!comments.length) return null
+
+  return comments[activeCommentIndex.value % comments.length]
+}
+
+function popularCommentKey(post) {
+  const comment = activePopularComment(post)
+  return comment ? `${post.id}-${comment.id}` : `${post.id}-empty`
 }
 
 function categoryLabel(category) {
@@ -336,6 +355,15 @@ watch(sortMode, async () => {
 onMounted(async () => {
   await Promise.all([loadPosts(), loadPopularPosts()])
   loadLocalPickPlaces()
+  commentRotateTimerId = window.setInterval(() => {
+    activeCommentIndex.value += 1
+  }, COMMENT_ROTATE_INTERVAL_MS)
+})
+
+onBeforeUnmount(() => {
+  if (commentRotateTimerId) {
+    window.clearInterval(commentRotateTimerId)
+  }
 })
 </script>
 
@@ -462,6 +490,26 @@ onMounted(async () => {
   flex: 0 0 auto;
   color: var(--muted);
   font-weight: 850;
+}
+
+.realtime-comment-enter-active,
+.realtime-comment-leave-active {
+  transition:
+    opacity 360ms ease,
+    filter 360ms ease,
+    transform 360ms ease;
+}
+
+.realtime-comment-enter-from {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translateY(6px);
+}
+
+.realtime-comment-leave-to {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translateY(-6px);
 }
 
 .realtime-popular-row > span {
