@@ -11,7 +11,7 @@
           <header>
             <div class="ai-mark"><Bot :size="20" /></div>
             <div>
-              <strong>LocalHub AI</strong>
+              <strong>Local-In AI</strong>
               <span>온라인</span>
             </div>
           </header>
@@ -29,7 +29,7 @@
             <Sparkles :size="22" />
             <h2>응답 범위</h2>
             <ul>
-              <li>관광지 추천</li>
+              <li>현지 추천 장소</li>
               <li>축제 일정</li>
               <li>교통과 예산</li>
               <li>커뮤니티 후기 검색</li>
@@ -54,7 +54,7 @@ const loading = ref(false)
 const messages = ref([
   {
     role: 'assistant',
-    text: '안녕하세요. LocalHub AI입니다. 서울 관광지, 축제, 숙박, 커뮤니티 후기 중 무엇을 찾고 있나요?',
+    text: '안녕하세요. Local-In AI입니다. 서울의 현지 추천 장소, 축제, 숙박, 커뮤니티 후기 중 무엇을 찾고 있나요?',
     time: now(),
   },
 ])
@@ -97,7 +97,7 @@ async function send(text) {
   justify-content: center;
   width: 42px;
   height: 42px;
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-radius: var(--radius);
 }
@@ -144,7 +144,7 @@ header span {
 
 .prompt-panel button:hover {
   color: var(--primary);
-  border-color: #bfdbfe;
+  border-color: var(--line);
   background: var(--primary-soft);
 }
 
@@ -156,6 +156,12 @@ header span {
 
 .gradient h2 {
   color: #fff;
+}
+
+:global([data-theme='dark']) .gradient {
+  color: #fff;
+  background: #050505;
+  border: 1px solid var(--line);
 }
 
 .gradient ul {
