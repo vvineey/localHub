@@ -6,7 +6,7 @@ import {
 } from '../data/localhub'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
-const PAGE_SIZE = 100
+const PAGE_SIZE = 10000
 const CHAT_SESSION_STORAGE_KEY = 'local-in-chat-session-id'
 export const placeCategoryFilters = [
   { label: '전체', contentTypeId: null },
@@ -215,7 +215,7 @@ export async function fetchPlacesPage({
   fallbackOnError = true,
 } = {}) {
   const safePage = Math.max(1, Number(page) || 1)
-  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 9))
+  const safePageSize = Math.min(10000, Math.max(1, Number(pageSize) || 9))
   const skip = (safePage - 1) * safePageSize
   const contentTypeId = contentTypeIdFor(category)
 
@@ -275,7 +275,7 @@ export async function fetchPlaceById(id) {
 
 export async function fetchCommunityPosts({ page = 1, pageSize = 100 } = {}) {
   const safePage = Math.max(1, Number(page) || 1)
-  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 100))
+  const safePageSize = Math.min(10000, Math.max(1, Number(pageSize) || 100))
   const skip = (safePage - 1) * safePageSize
 
   const payload = await requestJson(`/posts?skip=${skip}&limit=${safePageSize}`)
