@@ -43,6 +43,43 @@
       </div>
     </section>
 
+    <section v-if="popularPosts.length" class="container community-container realtime-popular">
+      <div class="realtime-popular-header">
+        <div>
+          <span>{{ t('community.realtimePopularKicker') }}</span>
+          <h2>{{ t('community.realtimePopularTitle') }}</h2>
+        </div>
+        <span>{{ t('community.realtimePopularMetric') }}</span>
+      </div>
+
+      <div class="realtime-popular-list">
+        <RouterLink
+          v-for="(post, index) in popularPosts"
+          :key="post.id"
+          class="realtime-popular-row"
+          :to="`/community/${post.id}`"
+        >
+          <strong>{{ index + 1 }}</strong>
+          <div>
+            <h3>{{ post.title }}</h3>
+            <p v-if="firstComment(post)">
+              <MessageCircle :size="14" />
+              <b>{{ firstComment(post).author_name || t('community.anonymous') }}</b>
+              {{ firstComment(post).content }}
+            </p>
+            <p v-else>
+              <MessageCircle :size="14" />
+              {{ t('community.noComments') }}
+            </p>
+          </div>
+          <span>
+            <Eye :size="14" />
+            {{ post.views.toLocaleString() }}
+          </span>
+        </RouterLink>
+      </div>
+    </section>
+
     <div class="container community-container board-content">
       <div class="search-row board-search">
         <Search :size="17" />
@@ -154,7 +191,7 @@ import {
   TrendingUp,
 } from '@lucide/vue'
 import { places as fallbackLocalPickPlaces } from '../data/localhub'
-import { fetchPlacesPage, fetchCommunityPosts, updateCommunityPost } from '../services/localHubApi'
+import { fetchPlacesPage, fetchCommunityPosts, fetchPopularCommunityPosts, updateCommunityPost } from '../services/localHubApi'
 
 const { locale, t, te } = useI18n()
 const keyword = ref('')
@@ -162,6 +199,7 @@ const activeCategory = ref('전체')
 const sortMode = ref('latest')
 const page = ref(1)
 const posts = ref([])
+const popularPosts = ref([])
 const localPickPlaces = ref([...fallbackLocalPickPlaces])
 const isLocalPickReady = ref(true)
 const pickScroller = ref(null)
@@ -232,6 +270,10 @@ function commentPreview(post) {
   return Array.isArray(post.comment_preview) ? post.comment_preview.slice(0, 2) : []
 }
 
+function firstComment(post) {
+  return commentPreview(post)[0] || null
+}
+
 function categoryLabel(category) {
   const key = `categoryLabels.${category}`
   return te(key) ? t(key) : category
@@ -274,6 +316,14 @@ async function loadLocalPickPlaces() {
   }
 }
 
+async function loadPopularPosts() {
+  try {
+    popularPosts.value = await fetchPopularCommunityPosts({ limit: 3 })
+  } catch {
+    popularPosts.value = []
+  }
+}
+
 watch([keyword, activeCategory], () => {
   page.value = 1
 })
@@ -284,7 +334,7 @@ watch(sortMode, async () => {
 })
 
 onMounted(async () => {
-  await loadPosts()
+  await Promise.all([loadPosts(), loadPopularPosts()])
   loadLocalPickPlaces()
 })
 </script>
@@ -309,6 +359,113 @@ onMounted(async () => {
 
 .board-content {
   margin-top: 0;
+}
+
+.realtime-popular {
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+.realtime-popular-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 2px 12px;
+}
+
+.realtime-popular-header span {
+  color: var(--muted-light);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.realtime-popular-header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 1.18rem;
+  line-height: 1.28;
+}
+
+.realtime-popular-list {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.realtime-popular-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 78px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.realtime-popular-row:last-child {
+  border-bottom: 0;
+}
+
+.realtime-popular-row:hover {
+  background: var(--surface-soft);
+  transform: translateX(3px);
+}
+
+.realtime-popular-row > strong {
+  color: var(--primary);
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.realtime-popular-row div {
+  min-width: 0;
+}
+
+.realtime-popular-row h3 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.realtime-popular-row p,
+.realtime-popular-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-light);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.realtime-popular-row p {
+  overflow: hidden;
+  max-width: 100%;
+  margin: 7px 0 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.realtime-popular-row p svg {
+  flex: 0 0 auto;
+}
+
+.realtime-popular-row p b {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.realtime-popular-row > span {
+  justify-self: end;
 }
 
 .local-pick-section {
@@ -618,6 +775,20 @@ onMounted(async () => {
 }
 
 @media (max-width: 620px) {
+  .realtime-popular-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .realtime-popular-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .realtime-popular-row > span {
+    display: none;
+  }
+
   .local-pick-section {
     margin-top: 2px;
     padding: 20px 0 28px;
