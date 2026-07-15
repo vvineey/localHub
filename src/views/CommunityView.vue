@@ -276,14 +276,15 @@ onBeforeUnmount(() => {
 }
 
 .board-content {
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .local-pick-section {
+  --pick-sticky-height: clamp(500px, 54vh, 640px);
   position: relative;
   width: 100vw;
-  min-height: calc(100vh - 64px + var(--pick-scroll-distance));
-  margin: 0 0 14px calc(50% - 50vw);
+  min-height: calc(var(--pick-sticky-height) + var(--pick-scroll-distance));
+  margin: 0 0 2px calc(50% - 50vw);
   color: var(--text);
   background: var(--surface-strong);
 }
@@ -293,12 +294,12 @@ onBeforeUnmount(() => {
   top: 64px;
   display: flex;
   overflow: hidden;
-  height: calc(100vh - 64px);
-  min-height: 560px;
+  height: var(--pick-sticky-height);
+  min-height: 500px;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 14px;
-  padding: clamp(32px, 5vh, 54px) 0 clamp(34px, 5.5vh, 62px);
+  gap: 12px;
+  padding: clamp(24px, 3.8vh, 42px) 0 clamp(22px, 3.6vh, 38px);
 }
 
 .local-pick-header {
@@ -509,16 +510,17 @@ onBeforeUnmount(() => {
 
 @media (max-width: 620px) {
   .local-pick-section {
-    min-height: calc(100vh - 58px + var(--pick-scroll-distance));
+    --pick-sticky-height: clamp(480px, 72vh, 540px);
+    min-height: calc(var(--pick-sticky-height) + var(--pick-scroll-distance));
     margin-top: 2px;
   }
 
   .local-pick-sticky {
     top: 58px;
-    height: calc(100vh - 58px);
-    min-height: 520px;
+    height: var(--pick-sticky-height);
+    min-height: 480px;
     gap: 12px;
-    padding: 28px 0 38px;
+    padding: 24px 0 30px;
   }
 
   .local-pick-track {
