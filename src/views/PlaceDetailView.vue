@@ -39,14 +39,19 @@
       </aside>
     </div>
   </section>
+  <section v-else-if="isLoading" class="section">
+    <div class="container">
+      <div class="panel loading-panel">장소 정보를 불러오는 중입니다.</div>
+    </div>
+  </section>
   <NotFoundView v-else />
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft, Clock, MapPin, Star, Ticket } from '@lucide/vue'
-import { places } from '../data/localhub'
+import { fetchPlaceById, fetchPlaces } from '../services/localHubApi'
 import NotFoundView from './NotFoundView.vue'
 
 const props = defineProps({
@@ -56,9 +61,30 @@ const props = defineProps({
   },
 })
 
-const place = computed(() => places.find((item) => item.id === Number(props.id)))
+const place = ref(null)
+const places = ref([])
+const isLoading = ref(true)
 const nearbyPlaces = computed(() =>
-  places.filter((item) => item.id !== Number(props.id)).slice(0, 3),
+  places.value.filter((item) => item.id !== Number(props.id)).slice(0, 3),
+)
+
+async function loadPlace(id) {
+  isLoading.value = true
+  try {
+    const [loadedPlace, loadedPlaces] = await Promise.all([fetchPlaceById(id), fetchPlaces()])
+    place.value = loadedPlace
+    places.value = loadedPlaces
+  } finally {
+    isLoading.value = false
+  }
+}
+
+watch(
+  () => props.id,
+  (id) => {
+    loadPlace(id)
+  },
+  { immediate: true },
 )
 </script>
 
@@ -160,6 +186,12 @@ h1 {
   height: 48px;
   object-fit: cover;
   border-radius: var(--radius);
+}
+
+.loading-panel {
+  padding: 28px;
+  color: var(--muted);
+  font-weight: 750;
 }
 
 @media (max-width: 900px) {
