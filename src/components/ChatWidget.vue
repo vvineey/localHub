@@ -101,7 +101,7 @@ async function send(text) {
   width: 56px;
   height: 56px;
   color: #fff;
-  background: #111;
+  background: #0d1117;
   border: 1px solid var(--line);
   border-radius: 999px;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
@@ -119,8 +119,8 @@ async function send(text) {
 }
 
 .widget-panel {
-  --primary: #111111;
-  --primary-dark: #000000;
+  --primary: #0d1117;
+  --primary-dark: #010409;
   --primary-soft: #f3f4f6;
   --on-primary: #ffffff;
   display: flex;
@@ -141,7 +141,7 @@ async function send(text) {
   gap: 12px;
   padding: 13px 14px;
   color: #fff;
-  background: #111;
+  background: #0d1117;
 }
 
 .widget-header strong,
@@ -176,7 +176,7 @@ async function send(text) {
 .quick-row button {
   min-height: 30px;
   padding: 0 9px;
-  color: #111;
+  color: #0d1117;
   background: #f3f4f6;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -190,19 +190,19 @@ async function send(text) {
 }
 
 :global([data-theme='dark']) .widget-button {
-  color: #000;
+  color: #0d1117;
   background: #fff;
 }
 
 :global([data-theme='dark']) .widget-panel {
   --primary: #ffffff;
   --primary-dark: #e5e5e5;
-  --primary-soft: #151515;
-  --on-primary: #000000;
+  --primary-soft: #161b22;
+  --on-primary: #0d1117;
 }
 
 :global([data-theme='dark']) .widget-header {
-  color: #000;
+  color: #0d1117;
   background: #fff;
 }
 

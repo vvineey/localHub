@@ -1,5 +1,6 @@
 <template>
-  <section v-if="post" class="section">
+  <PageLoading v-if="isLoading" />
+  <section v-else-if="post" class="section">
     <div class="container post-detail-container">
       <RouterLink class="back-link" to="/community"><ArrowLeft :size="16" /> {{ t('community.back') }}</RouterLink>
 
@@ -80,6 +81,7 @@ import { onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Eye, Heart, MessageSquare } from '@lucide/vue'
+import PageLoading from '../components/PageLoading.vue'
 import PasswordModal from '../components/PasswordModal.vue'
 import NotFoundView from './NotFoundView.vue'
 import {
@@ -123,15 +125,19 @@ const pendingAction = ref(null)
 const passwordError = ref(false)
 const post = ref(null)
 const comments = ref([])
+const isLoading = ref(true)
 const newComment = ref({ author_name: generateRandomNickname(), content: '', password: '' })
 
 async function loadPost() {
+  isLoading.value = true
   try {
     const data = await fetchCommunityPostById(props.id)
     post.value = { ...data, liked: false }
     await Promise.all([increaseViewCount(), loadComments()])
   } catch {
     post.value = null
+  } finally {
+    isLoading.value = false
   }
 }
 

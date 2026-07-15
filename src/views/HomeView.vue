@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <PageLoading v-if="isHomeLoading" />
+  <div v-else>
     <section class="hero">
       <div class="hero-slides" aria-hidden="true">
         <img
@@ -107,7 +108,6 @@
         <div class="hot-post-panel" :aria-label="t('home.hotPostsAria')">
           <div class="hot-post-header">
             <strong>{{ t('home.hotPostsNow') }}</strong>
-            <span>{{ t('home.hotPostsUpdated') }}</span>
           </div>
           <div v-if="popularPostsLoading" class="hot-post-state">
             {{ t('home.hotPostsLoading') }}
@@ -193,8 +193,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowRight, ArrowUpRight, CalendarDays, Map, MapPin, MessageCircle, MessageSquare, Search, Sparkles, Star, Users } from '@lucide/vue'
+import PageLoading from '../components/PageLoading.vue'
 import StatBars from '../components/StatBars.vue'
-import { festivals as fallbackFestivals, places as fallbackPlaces } from '../data/localhub'
 import { fetchDashboardData, fetchCommunityPosts, fetchFestivals, fetchPlaces, fetchPopularCommunityPosts } from '../services/localHubApi'
 
 const HERO_SLIDE_INTERVAL_MS = 2000
@@ -218,9 +218,10 @@ const dashboardStats = ref({
 const activeShowcaseIndex = ref(0)
 const activeCommentIndex = ref(0)
 const showcaseCardRefs = ref([])
-const homePlaces = ref([...fallbackPlaces])
-const homeFestivals = ref([...fallbackFestivals])
+const homePlaces = ref([])
+const homeFestivals = ref([])
 const homePopularPosts = ref([])
+const isHomeLoading = ref(true)
 const popularPostsLoading = ref(true)
 const popularPostsError = ref(false)
 let heroSlideTimerId = null
@@ -281,7 +282,7 @@ const barItems = computed(() => [
 
 const showcasePlaces = computed(() => homePlaces.value.slice(0, 3))
 const activeShowcasePlace = computed(
-  () => showcasePlaces.value[activeShowcaseIndex.value] ?? showcasePlaces.value[0],
+  () => showcasePlaces.value[activeShowcaseIndex.value] ?? showcasePlaces.value[0] ?? {},
 )
 const formattedActiveShowcaseIndex = computed(() =>
   String(activeShowcaseIndex.value + 1).padStart(2, '0'),
@@ -392,6 +393,12 @@ async function loadPopularPosts() {
   }
 }
 
+async function loadInitialHome() {
+  isHomeLoading.value = true
+  await Promise.all([loadHomeData(), loadPopularPosts()])
+  isHomeLoading.value = false
+}
+
 onMounted(() => {
   if (heroImages.length > 1) {
     heroSlideTimerId = window.setInterval(() => {
@@ -403,9 +410,7 @@ onMounted(() => {
     activeCommentIndex.value += 1
   }, COMMENT_ROTATE_INTERVAL_MS)
 
-  observeShowcaseCards()
-  loadHomeData()
-  loadPopularPosts()
+  loadInitialHome()
 })
 
 onBeforeUnmount(() => {
@@ -446,7 +451,7 @@ function goSearch() {
 
 .hero-slides {
   overflow: hidden;
-  background: #000;
+  background: #0d1117;
 }
 
 .hero-slide {
@@ -509,7 +514,7 @@ function goSearch() {
   border-radius: 999px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 22px 58px rgba(0, 0, 0, 0.26);
+    0 22px 58px rgba(13, 17, 23, 0.26);
   backdrop-filter: blur(18px) saturate(150%);
   -webkit-backdrop-filter: blur(18px) saturate(150%);
 }
@@ -541,7 +546,7 @@ function goSearch() {
   border-radius: 999px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 12px 28px rgba(0, 0, 0, 0.16);
+    0 12px 28px rgba(13, 17, 23, 0.16);
 }
 
 .hero-search .btn:hover {
@@ -744,7 +749,7 @@ function goSearch() {
   border-color: rgba(255, 255, 255, 0.22);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 22px 46px rgba(0, 0, 0, 0.38);
+    0 22px 46px rgba(13, 17, 23, 0.38);
 }
 
 .popular-visuals {

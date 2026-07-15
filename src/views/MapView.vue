@@ -1,5 +1,6 @@
 <template>
-  <section class="section">
+  <PageLoading v-if="isMapLoading" />
+  <section v-else class="section">
     <div class="container">
       <div class="page-title">
         <h1>{{ t('map.title') }}</h1>
@@ -62,9 +63,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PageLoading from '../components/PageLoading.vue'
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
-import { mapPins as fallbackMapPins } from '../data/localhub'
 import { fetchAdministrativeDistrict, formatAdministrativeDistrict } from '../services/kakaoMapApi'
 import { fetchMapPins } from '../services/localHubApi'
 
@@ -74,7 +75,8 @@ const selected = ref(null)
 const selectedRegion = ref(null)
 const selectedRegionError = ref('')
 const selectedRegionLoading = ref(false)
-const mapPins = ref([...fallbackMapPins])
+const mapPins = ref([])
+const isMapLoading = ref(true)
 const userLocation = ref(null)
 let regionRequestId = 0
 
@@ -214,7 +216,11 @@ async function handleSelect(pin) {
 }
 
 onMounted(async () => {
-  mapPins.value = await fetchMapPins({ max: 360 })
+  try {
+    mapPins.value = await fetchMapPins({ max: 360 })
+  } finally {
+    isMapLoading.value = false
+  }
 })
 </script>
 

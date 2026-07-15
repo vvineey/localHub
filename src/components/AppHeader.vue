@@ -267,7 +267,7 @@ function toggleTheme() {
 :global([data-theme='dark']) .mobile-link.router-link-active,
 :global([data-theme='dark']) .mobile-link:hover {
   color: #fff;
-  background: #111;
+  background: #161b22;
 }
 
 @media (max-width: 860px) {

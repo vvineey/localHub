@@ -1,5 +1,6 @@
 <template>
-  <section class="section" v-if="place">
+  <PageLoading v-if="isLoading" />
+  <section class="section" v-else-if="place">
     <div class="container detail-layout">
       <div>
         <RouterLink class="back-link" to="/explore"><ArrowLeft :size="16" /> {{ t('place.backToExplore') }}</RouterLink>
@@ -39,11 +40,6 @@
       </aside>
     </div>
   </section>
-  <section v-else-if="isLoading" class="section">
-    <div class="container">
-      <div class="panel loading-panel">{{ t('common.loadingPlace') }}</div>
-    </div>
-  </section>
   <NotFoundView v-else />
 </template>
 
@@ -52,6 +48,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Clock, MapPin, Star, Ticket } from '@lucide/vue'
+import PageLoading from '../components/PageLoading.vue'
 import { fetchPlaceById, fetchPlacesPage } from '../services/localHubApi'
 import NotFoundView from './NotFoundView.vue'
 

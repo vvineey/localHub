@@ -1,5 +1,6 @@
 <template>
-  <section class="section">
+  <PageLoading v-if="isLoading" />
+  <section v-else class="section">
     <div class="container editor-container">
       <RouterLink class="back-link" to="/community"><ArrowLeft :size="16" /> {{ t('community.back') }}</RouterLink>
       <div class="page-title">
@@ -50,10 +51,11 @@
 </template>
 
 <script setup>
-import { computed, reactive, onMounted, watch } from 'vue'
+import { computed, reactive, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft } from '@lucide/vue'
+import PageLoading from '../components/PageLoading.vue'
 import { fetchCommunityPostById, createCommunityPost, updateCommunityPost } from '../services/localHubApi'
 
 const props = defineProps({
@@ -67,6 +69,7 @@ const router = useRouter()
 const { t, te } = useI18n()
 const categories = ['맛집/카페', '일정', '사진', '팁', '자연', '질문']
 const isEdit = computed(() => Boolean(props.id))
+const isLoading = ref(false)
 
 function categoryLabel(category) {
   const key = `categoryLabels.${category}`
@@ -82,6 +85,7 @@ const form = reactive({
 
 async function loadPost() {
   if (!props.id) {
+    isLoading.value = false
     form.title = ''
     form.content = ''
     form.category = '팁'
@@ -89,6 +93,7 @@ async function loadPost() {
     return
   }
 
+  isLoading.value = true
   try {
     const post = await fetchCommunityPostById(props.id)
     form.title = post.title || ''
@@ -96,6 +101,8 @@ async function loadPost() {
     form.category = post.category || '팁'
   } catch {
     router.push('/community')
+  } finally {
+    isLoading.value = false
   }
 }
 

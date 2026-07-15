@@ -97,8 +97,8 @@ async function send(text) {
 }
 
 .assistant-container {
-  --primary: #111111;
-  --primary-dark: #000000;
+  --primary: #0d1117;
+  --primary-dark: #010409;
   --primary-soft: #f3f4f6;
   --on-primary: #ffffff;
 }
@@ -177,7 +177,7 @@ header span {
 
 .gradient {
   color: #fff;
-  background: #111;
+  background: #0d1117;
   border: 1px solid var(--line);
 }
 
@@ -187,15 +187,15 @@ header span {
 
 :global([data-theme='dark']) .gradient {
   color: #fff;
-  background: #050505;
+  background: #0d1117;
   border: 1px solid var(--line);
 }
 
 :global([data-theme='dark']) .assistant-container {
   --primary: #ffffff;
   --primary-dark: #e5e5e5;
-  --primary-soft: #151515;
-  --on-primary: #000000;
+  --primary-soft: #161b22;
+  --on-primary: #0d1117;
 }
 
 .gradient ul {

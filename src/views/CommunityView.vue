@@ -1,5 +1,6 @@
 <template>
-  <section class="section community-page">
+  <PageLoading v-if="isCommunityLoading" />
+  <section v-else class="section community-page">
     <div class="container community-container">
       <div class="section-title">
         <div>
@@ -46,7 +47,6 @@
     <section v-if="popularPosts.length" class="container community-container realtime-popular">
       <div class="realtime-popular-header">
         <div>
-          <span>{{ t('community.realtimePopularKicker') }}</span>
           <h2>{{ t('community.realtimePopularTitle') }}</h2>
         </div>
         <span>{{ t('community.realtimePopularMetric') }}</span>
@@ -192,6 +192,7 @@ import {
   Search,
   TrendingUp,
 } from '@lucide/vue'
+import PageLoading from '../components/PageLoading.vue'
 import { places as fallbackLocalPickPlaces } from '../data/localhub'
 import { fetchPlacesPage, fetchCommunityPosts, fetchPopularCommunityPosts, updateCommunityPost } from '../services/localHubApi'
 
@@ -203,8 +204,9 @@ const page = ref(1)
 const posts = ref([])
 const popularPosts = ref([])
 const activeCommentIndex = ref(0)
-const localPickPlaces = ref([...fallbackLocalPickPlaces])
-const isLocalPickReady = ref(true)
+const localPickPlaces = ref([])
+const isCommunityLoading = ref(true)
+const isLocalPickReady = ref(false)
 const pickScroller = ref(null)
 const pageSize = 4
 const COMMENT_ROTATE_INTERVAL_MS = 2800
@@ -353,8 +355,12 @@ watch(sortMode, async () => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadPosts(), loadPopularPosts()])
-  loadLocalPickPlaces()
+  try {
+    await Promise.all([loadPosts(), loadPopularPosts(), loadLocalPickPlaces()])
+  } finally {
+    isCommunityLoading.value = false
+  }
+
   commentRotateTimerId = window.setInterval(() => {
     activeCommentIndex.value += 1
   }, COMMENT_ROTATE_INTERVAL_MS)
@@ -617,7 +623,7 @@ onBeforeUnmount(() => {
 
 :global([data-theme='dark']) .local-pick-section {
   color: #fff;
-  background: #000;
+  background: #0d1117;
 }
 
 :global([data-theme='dark']) .local-pick-header span {
@@ -629,7 +635,7 @@ onBeforeUnmount(() => {
 }
 
 :global([data-theme='dark']) .local-pick-card img {
-  background: #111;
+  background: #161b22;
 }
 
 :global([data-theme='dark']) .local-pick-card-body span {
@@ -735,7 +741,7 @@ onBeforeUnmount(() => {
 }
 
 :global([data-theme='dark']) .post-comment-preview::after {
-  background: linear-gradient(180deg, rgba(5, 5, 5, 0), var(--surface));
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0), var(--surface));
 }
 
 .preview-comment {
@@ -753,7 +759,7 @@ onBeforeUnmount(() => {
 
 .preview-comment.is-faded {
   opacity: 0.54;
-  mask-image: linear-gradient(180deg, #000 48%, rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(180deg, #0d1117 48%, rgba(13, 17, 23, 0));
 }
 
 .preview-comment svg {

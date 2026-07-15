@@ -1,5 +1,6 @@
 <template>
-  <section class="section festival-section">
+  <PageLoading v-if="isFestivalInitialLoading" />
+  <section v-else class="section festival-section">
     <div class="container festival-container">
       <div class="page-title">
         <h1>{{ t('festivals.title') }}</h1>
@@ -178,7 +179,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Pause, Play } from '@lucide/vue'
-import { festivals as fallbackFestivals } from '../data/localhub'
+import PageLoading from '../components/PageLoading.vue'
 import { fetchFestivals, fetchFestivalsPage } from '../services/localHubApi'
 
 const { t, tm } = useI18n()
@@ -194,14 +195,15 @@ const EVENT_COLORS = ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#06b6d4']
 
 const weekdays = computed(() => tm('festivals.weekdays'))
 const selectedDay = ref(1)
-const calendarFestivals = ref([...fallbackFestivals])
-const festivals = ref(fallbackFestivals.slice(0, FESTIVAL_PAGE_SIZE))
-const totalFestivals = ref(fallbackFestivals.length)
+const calendarFestivals = ref([])
+const festivals = ref([])
+const totalFestivals = ref(0)
 const festivalPage = ref(1)
 const featuredOffset = ref(0)
 const featuredSlideDirection = ref(1)
 const isFeaturedPaused = ref(false)
 const isFeaturedHovered = ref(false)
+const isFestivalInitialLoading = ref(true)
 const isFestivalPageLoading = ref(false)
 let festivalPageRequestId = 0
 let featuredRotateTimerId = null
@@ -410,8 +412,12 @@ watch(festivalSource, () => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadCalendarFestivals(), loadFestivalPage()])
-  startFeaturedRotation()
+  try {
+    await Promise.all([loadCalendarFestivals(), loadFestivalPage()])
+  } finally {
+    isFestivalInitialLoading.value = false
+    startFeaturedRotation()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -522,8 +528,8 @@ onBeforeUnmount(() => {
   color: #fff;
   opacity: 0;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.78)),
-    rgba(0, 0, 0, 0.28);
+    linear-gradient(180deg, rgba(13, 17, 23, 0.06), rgba(13, 17, 23, 0.78)),
+    rgba(13, 17, 23, 0.28);
   transform: translateY(10px);
   transition:
     opacity 220ms ease,

@@ -1,5 +1,6 @@
 <template>
-  <section class="section">
+  <PageLoading v-if="isInitialLoading" />
+  <section v-else class="section">
     <div class="container">
       <div class="page-title">
         <h1>{{ t('explore.title') }}</h1>
@@ -74,6 +75,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight, Search } from '@lucide/vue'
+import PageLoading from '../components/PageLoading.vue'
 import PlaceCard from '../components/PlaceCard.vue'
 import {
   fetchPlacesPage,
@@ -89,6 +91,7 @@ const places = ref([])
 const totalPlaces = ref(0)
 const page = ref(1)
 const isLoading = ref(true)
+const isInitialLoading = ref(true)
 const pageSize = 9
 let searchTimerId = null
 let placesRequestId = 0
@@ -143,6 +146,7 @@ async function loadPlaces() {
   } finally {
     if (requestId === placesRequestId) {
       isLoading.value = false
+      isInitialLoading.value = false
     }
   }
 }
