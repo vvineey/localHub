@@ -81,7 +81,7 @@
             <p class="line-clamp">{{ post.content }}</p>
           </RouterLink>
           <div class="post-meta">
-            <button type="button" :title="post.liked ? '좋아요 취소' : '좋아요'" @click="store.toggleLike(post.id)">
+            <button type="button" :title="post.liked ? '좋아요 취소' : '좋아요'" @click="toggleLike(post.id)">
               <Heart :size="15" :fill="post.liked ? 'currentColor' : 'none'" />
               {{ post.likes }}
             </button>
@@ -129,13 +129,12 @@ import {
   MessageSquare,
   Search,
 } from '@lucide/vue'
-import { fetchPlacesPage } from '../services/localHubApi'
-import { useCommunityStore } from '../stores/community'
+import { fetchPlacesPage, fetchCommunityPosts } from '../services/localHubApi'
 
-const store = useCommunityStore()
 const keyword = ref('')
 const activeCategory = ref('전체')
 const page = ref(1)
+const posts = ref([])
 const localPickPlaces = ref([])
 const isLocalPickReady = ref(false)
 const pickSection = ref(null)
@@ -151,12 +150,12 @@ const localPickCards = computed(() => localPickPlaces.value.slice(0, 6))
 
 const postCategories = computed(() => [
   '전체',
-  ...new Set(store.state.posts.map((post) => post.category)),
+  ...new Set(posts.value.map((post) => post.category)),
 ])
 
 const filteredPosts = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
-  return store.state.posts.filter((post) => {
+  return posts.value.filter((post) => {
     const matchKeyword =
       !normalized || [post.title, post.content, post.category].join(' ').toLowerCase().includes(normalized)
     const matchCategory = activeCategory.value === '전체' || post.category === activeCategory.value
@@ -168,6 +167,23 @@ const pageCount = computed(() => Math.ceil(filteredPosts.value.length / pageSize
 const pagedPosts = computed(() =>
   filteredPosts.value.slice((page.value - 1) * pageSize, page.value * pageSize),
 )
+
+function toggleLike(postId) {
+  const index = posts.value.findIndex((post) => post.id === Number(postId))
+  if (index === -1) return
+  const post = posts.value[index]
+  post.liked = !post.liked
+  post.likes = (post.likes || 0) + (post.liked ? 1 : -1)
+}
+
+async function loadPosts() {
+  try {
+    const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100 })
+    posts.value = items.map((post) => ({ ...post, liked: false }))
+  } catch {
+    posts.value = []
+  }
+}
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
@@ -221,6 +237,7 @@ onMounted(async () => {
   window.addEventListener('scroll', updatePickScroll, { passive: true })
   window.addEventListener('resize', measurePickScroll)
 
+  await loadPosts()
   loadLocalPickPlaces()
 })
 

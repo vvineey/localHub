@@ -15,7 +15,7 @@
         </header>
         <p class="content">{{ post.content }}</p>
         <footer>
-          <button class="btn btn-secondary" type="button" @click="store.toggleLike(post.id)">
+          <button class="btn btn-secondary" type="button" @click="toggleLike()">
             <Heart :size="16" :fill="post.liked ? 'currentColor' : 'none'" />
             {{ post.likes }}
           </button>
@@ -28,11 +28,35 @@
 
       <section class="comments panel">
         <h2>댓글</h2>
-        <article v-for="comment in comments" :key="comment.name">
-          <strong>{{ comment.name }}</strong>
-          <time>{{ comment.date }}</time>
-          <p>{{ comment.text }}</p>
+        <article v-if="comments.length === 0" class="empty-comment">
+          댓글이 없습니다. 첫 댓글을 남겨보세요.
         </article>
+        <article v-for="comment in comments" :key="comment.id" class="comment-item">
+          <strong>{{ comment.author_name || '익명' }}</strong>
+          <time>{{ comment.created_at ?? comment.date ?? '날짜 없음' }}</time>
+          <p>{{ comment.content }}</p>
+        </article>
+
+        <form class="comment-form" @submit.prevent="submitComment">
+          <input
+            v-model="newComment.author_name"
+            type="text"
+            placeholder="작성자 이름 (선택)"
+          />
+          <textarea
+            v-model="newComment.content"
+            rows="3"
+            placeholder="댓글을 남겨보세요."
+            required
+          />
+          <input
+            v-model="newComment.password"
+            type="password"
+            placeholder="댓글 비밀번호"
+            required
+          />
+          <button class="btn btn-primary" type="submit">댓글 작성</button>
+        </form>
       </section>
     </div>
 
@@ -48,12 +72,19 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowLeft, Eye, Heart, MessageSquare } from '@lucide/vue'
 import PasswordModal from '../components/PasswordModal.vue'
-import { useCommunityStore } from '../stores/community'
 import NotFoundView from './NotFoundView.vue'
+import {
+  fetchCommunityPostById,
+  fetchCommentsByPostId,
+  createComment,
+  verifyCommunityPostPassword,
+  deleteCommunityPost,
+  updateCommunityPost,
+} from '../services/localHubApi'
 
 const props = defineProps({
   id: {
@@ -63,30 +94,64 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const store = useCommunityStore()
 const modalOpen = ref(false)
 const pendingAction = ref(null)
 const passwordError = ref(false)
+const post = ref(null)
+const comments = ref([])
+const newComment = ref({ author_name: '', content: '', password: '' })
 
-const post = computed(() => store.getPost(props.id))
-const comments = [
-  {
-    name: 'Travel Buddy',
-    date: '2026-07-13',
-    text: '정리 감사합니다. 서울 일정 짤 때 바로 참고할 수 있겠어요.',
-  },
-  {
-    name: 'SeoulExplorer',
-    date: '2026-07-11',
-    text: '저도 비슷한 동선으로 다녀왔는데 오전 시간이 확실히 좋았습니다.',
-  },
-]
-
-onMounted(() => {
-  if (post.value) {
-    store.increaseView(props.id)
+async function loadPost() {
+  try {
+    const data = await fetchCommunityPostById(props.id)
+    post.value = { ...data, liked: false }
+    await Promise.all([increaseViewCount(), loadComments()])
+  } catch {
+    post.value = null
   }
-})
+}
+
+async function increaseViewCount() {
+  if (!post.value) return
+  try {
+    const newViews = (post.value.views || 0) + 1
+    await updateCommunityPost(props.id, { views: newViews })
+    post.value.views = newViews
+  } catch {
+    post.value.views = (post.value.views || 0) + 1
+  }
+}
+
+async function loadComments() {
+  try {
+    comments.value = await fetchCommentsByPostId(props.id)
+  } catch {
+    comments.value = []
+  }
+}
+
+async function submitComment() {
+  if (!newComment.value.content.trim() || !newComment.value.password.trim()) return
+
+  try {
+    await createComment(props.id, {
+      content: newComment.value.content.trim(),
+      author_name: newComment.value.author_name.trim() || '익명',
+      password: newComment.value.password,
+    })
+    newComment.value.content = ''
+    newComment.value.author_name = ''
+    newComment.value.password = ''
+    await loadComments()
+    if (post.value) {
+      post.value.comments = (post.value.comments || 0) + 1
+    }
+  } catch {
+    // 댓글 작성 실패 시 차후 처리
+  }
+}
+
+onMounted(loadPost)
 
 function requestAction(action) {
   pendingAction.value = action
@@ -100,14 +165,23 @@ function closeModal() {
   passwordError.value = false
 }
 
-function confirmPassword(password) {
-  if (!store.verifyPassword(props.id, password)) {
+function toggleLike() {
+  if (!post.value) return
+  post.value.liked = !post.value.liked
+  post.value.likes = (post.value.likes || 0) + (post.value.liked ? 1 : -1)
+}
+
+async function confirmPassword(password) {
+  try {
+    await verifyCommunityPostPassword(props.id, password)
+    passwordError.value = false
+  } catch {
     passwordError.value = true
     return
   }
 
   if (pendingAction.value === 'delete') {
-    store.deletePost(props.id)
+    await deleteCommunityPost(props.id, password)
     router.push('/community')
     return
   }

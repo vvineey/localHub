@@ -4,7 +4,6 @@ import {
   mapPins as fallbackMapPins,
   places as fallbackPlaces,
 } from '../data/localhub'
-import { getPosts } from '../stores/community'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const PAGE_SIZE = 100
@@ -125,14 +124,15 @@ function mapApiPlace(place) {
   }
 }
 
-async function requestJson(path) {
+async function requestJson(path, options = {}) {
   if (!API_BASE_URL || API_BASE_URL === 'mock') {
     throw new Error('Mock API mode')
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`)
+  const response = await fetch(`${API_BASE_URL}${path}`, options)
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`)
+    const errorText = await response.text().catch(() => null)
+    throw new Error(`API request failed: ${response.status}${errorText ? ' - ' + errorText : ''}`)
   }
   return response.json()
 }
@@ -272,6 +272,70 @@ export async function fetchPlaceById(id) {
   return places.find((place) => place.id === Number(id))
 }
 
+export async function fetchCommunityPosts({ page = 1, pageSize = 100 } = {}) {
+  const safePage = Math.max(1, Number(page) || 1)
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 100))
+  const skip = (safePage - 1) * safePageSize
+
+  const payload = await requestJson(`/posts?skip=${skip}&limit=${safePageSize}`)
+  return {
+    items: Array.isArray(payload.items) ? payload.items : [],
+    pagination: payload.pagination || { page: safePage, size: safePageSize, total: 0 },
+  }
+}
+
+export async function fetchCommunityPostById(id) {
+  return requestJson(`/posts/${id}`)
+}
+
+export async function createCommunityPost(payload) {
+  return requestJson(`/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateCommunityPost(id, payload) {
+  return requestJson(`/posts/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteCommunityPost(id, password) {
+  return requestJson(`/posts/${id}?password=${encodeURIComponent(password)}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function verifyCommunityPostPassword(id, password) {
+  return requestJson(`/posts/${id}/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+}
+
+export async function fetchCommentsByPostId(postId) {
+  return requestJson(`/comments/posts/${postId}`)
+}
+
+export async function createComment(postId, payload) {
+  return requestJson(`/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ post_id: Number(postId), ...payload }),
+  })
+}
+
+export async function deleteComment(commentId, password) {
+  return requestJson(`/comments/${commentId}?password=${encodeURIComponent(password)}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function fetchCategories() {
   const places = await loadApiPlaces()
   return ['전체', ...new Set(places.map((place) => place.category).filter(Boolean))]
@@ -331,24 +395,32 @@ export async function fetchMapPins({ max = 180 } = {}) {
   return pins.length
     ? pins
     : fallbackMapPins.map((pin) => ({
-        ...pin,
-        ...coordinateFromPercent(pin),
-        color: colorForType(pin.type),
-        category: pin.type,
-        district: '서울',
-        address: '서울',
-        summary: pin.name,
-      }))
+      ...pin,
+      ...coordinateFromPercent(pin),
+      color: colorForType(pin.type),
+      category: pin.type,
+      district: '서울',
+      address: '서울',
+      summary: pin.name,
+    }))
 }
 
 export async function searchAll(keyword = '') {
   const [places, festivals] = await Promise.all([fetchPlaces(), fetchFestivals()])
   const normalized = keyword.trim().toLowerCase()
   if (!normalized) {
-    return { places, festivals, posts: getPosts() }
+    return { places, festivals, posts: [] }
   }
 
   const match = (values) => values.join(' ').toLowerCase().includes(normalized)
+  let posts = []
+
+  try {
+    const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100 })
+    posts = Array.isArray(items) ? items : []
+  } catch {
+    posts = []
+  }
 
   return {
     places: places.filter((place) =>
@@ -357,7 +429,7 @@ export async function searchAll(keyword = '') {
     festivals: festivals.filter((festival) =>
       match([festival.name, festival.location, festival.summary]),
     ),
-    posts: getPosts().filter((post) => match([post.title, post.content, post.category])),
+    posts: posts.filter((post) => match([post.title, post.content, post.category])),
   }
 }
 
