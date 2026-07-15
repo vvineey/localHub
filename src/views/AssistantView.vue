@@ -76,6 +76,13 @@ async function send(text) {
   gap: 18px;
 }
 
+.assistant-container {
+  --primary: #111111;
+  --primary-dark: #000000;
+  --primary-soft: #f3f4f6;
+  --on-primary: #ffffff;
+}
+
 .chat-panel {
   display: flex;
   overflow: hidden;
@@ -150,8 +157,8 @@ header span {
 
 .gradient {
   color: #fff;
-  background: linear-gradient(135deg, #1e40af, #047857);
-  border: 0;
+  background: #111;
+  border: 1px solid var(--line);
 }
 
 .gradient h2 {
@@ -162,6 +169,13 @@ header span {
   color: #fff;
   background: #050505;
   border: 1px solid var(--line);
+}
+
+:global([data-theme='dark']) .assistant-container {
+  --primary: #ffffff;
+  --primary-dark: #e5e5e5;
+  --primary-soft: #151515;
+  --on-primary: #000000;
 }
 
 .gradient ul {
