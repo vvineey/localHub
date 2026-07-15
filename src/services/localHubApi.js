@@ -6,7 +6,7 @@ import {
 } from '../data/localhub'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
-const PAGE_SIZE = 10000
+const PAGE_SIZE = 100
 const FESTIVAL_CONTENT_TYPE_ID = 15
 const FESTIVAL_CALENDAR_YEAR = 2026
 const FESTIVAL_CALENDAR_MONTH_INDEX = 6
@@ -290,7 +290,7 @@ export async function fetchPlacesPage({
   fallbackOnError = true,
 } = {}) {
   const safePage = Math.max(1, Number(page) || 1)
-  const safePageSize = Math.min(10000, Math.max(1, Number(pageSize) || 9))
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 9))
   const skip = (safePage - 1) * safePageSize
   const contentTypeId = contentTypeIdFor(category)
 
@@ -344,13 +344,33 @@ export async function fetchPlacesPage({
 }
 
 export async function fetchPlaceById(id) {
-  const places = await loadApiPlaces()
-  return places.find((place) => place.id === Number(id))
+  const payload = await requestJson(`/places/${id}`)
+  return payload ? mapApiPlace(payload) : null
+}
+
+export async function fetchDashboardData() {
+  const payload = await requestJson('/dashboard')
+
+  return {
+    places: Array.isArray(payload.places) ? payload.places.map(mapApiPlace) : [],
+    festivals: Array.isArray(payload.festivals) ? payload.festivals.map(mapApiPlace) : [],
+    pins: Array.isArray(payload.pins) ? payload.pins.map(mapApiPlace) : [],
+    stats: {
+      place_count: Number(payload.stats?.place_count ?? 0),
+      festival_count: Number(payload.stats?.festival_count ?? 0),
+      community_posts_count: Number(payload.stats?.community_posts_count ?? 0),
+      type_counts: {
+        attraction: Number(payload.stats?.type_counts?.attraction ?? 0),
+        nature: Number(payload.stats?.type_counts?.nature ?? 0),
+        accommodation: Number(payload.stats?.type_counts?.accommodation ?? 0),
+      },
+    },
+  }
 }
 
 export async function fetchCommunityPosts({ page = 1, pageSize = 100 } = {}) {
   const safePage = Math.max(1, Number(page) || 1)
-  const safePageSize = Math.min(10000, Math.max(1, Number(pageSize) || 100))
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 100))
   const skip = (safePage - 1) * safePageSize
 
   const payload = await requestJson(`/posts?skip=${skip}&limit=${safePageSize}`)

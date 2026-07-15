@@ -52,7 +52,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Clock, MapPin, Star, Ticket } from '@lucide/vue'
-import { fetchPlaceById, fetchPlaces } from '../services/localHubApi'
+import { fetchPlaceById, fetchPlacesPage } from '../services/localHubApi'
 import NotFoundView from './NotFoundView.vue'
 
 const props = defineProps({
@@ -78,9 +78,12 @@ function categoryLabel(category) {
 async function loadPlace(id) {
   isLoading.value = true
   try {
-    const [loadedPlace, loadedPlaces] = await Promise.all([fetchPlaceById(id), fetchPlaces()])
+    const [loadedPlace, loadedPlacesResponse] = await Promise.all([
+      fetchPlaceById(id),
+      fetchPlacesPage({ page: 1, pageSize: 8 }),
+    ])
     place.value = loadedPlace
-    places.value = loadedPlaces
+    places.value = Array.isArray(loadedPlacesResponse.items) ? loadedPlacesResponse.items : []
   } finally {
     isLoading.value = false
   }

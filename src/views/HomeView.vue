@@ -157,7 +157,7 @@ import { ArrowRight, CalendarDays, Map, MapPin, MessageCircle, Search, Sparkles,
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
 import { festivals as fallbackFestivals, mapPins as fallbackMapPins, places as fallbackPlaces } from '../data/localhub'
-import { fetchFestivals, fetchMapPins, fetchPlaces, fetchCommunityPosts } from '../services/localHubApi'
+import { fetchDashboardData, fetchCommunityPosts, fetchPlaces, fetchFestivals, fetchMapPins } from '../services/localHubApi'
 
 const HERO_SLIDE_INTERVAL_MS = 2000
 
@@ -167,6 +167,16 @@ const keyword = ref('')
 const selectedPin = ref(null)
 const activeHeroIndex = ref(0)
 const communityPostsCount = ref(0)
+const dashboardStats = ref({
+  place_count: 0,
+  festival_count: 0,
+  community_posts_count: 0,
+  type_counts: {
+    attraction: 0,
+    nature: 0,
+    accommodation: 0,
+  },
+})
 const activeShowcaseIndex = ref(0)
 const showcaseCardRefs = ref([])
 const homePlaces = ref([...fallbackPlaces])
@@ -199,28 +209,28 @@ const heroImages = [
 ]
 
 const stats = computed(() => [
-  { label: t('home.statsPlaces'), value: homePlaces.value.length.toLocaleString(), icon: Map },
-  { label: t('home.statsFestivals'), value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
-  { label: t('home.statsReviews'), value: communityPostsCount.value.toLocaleString(), icon: Users },
+  { label: t('home.statsPlaces'), value: dashboardStats.value.place_count.toLocaleString(), icon: Map },
+  { label: t('home.statsFestivals'), value: dashboardStats.value.festival_count.toLocaleString(), icon: CalendarDays },
+  { label: t('home.statsReviews'), value: dashboardStats.value.community_posts_count.toLocaleString(), icon: Users },
   { label: t('home.statsAi'), value: 5, icon: MessageCircle },
 ])
 
 const barItems = computed(() => [
   {
     label: t('home.barPlaces'),
-    value: homePlaces.value.filter((item) => item.type === 'attraction').length,
+    value: dashboardStats.value.type_counts.attraction,
     percent: 84,
     color: '#2563eb',
   },
   {
     label: t('home.barNature'),
-    value: homePlaces.value.filter((item) => item.type === 'nature').length,
+    value: dashboardStats.value.type_counts.nature,
     percent: 48,
     color: '#10b981',
   },
   {
     label: t('home.barAccommodation'),
-    value: homePlaces.value.filter((item) => item.type === 'accommodation').length,
+    value: dashboardStats.value.type_counts.accommodation,
     percent: 32,
     color: '#06b6d4',
   },
@@ -276,21 +286,33 @@ function observeShowcaseCards() {
 }
 
 async function loadHomeData() {
-  const [places, festivals, pins] = await Promise.all([
-    fetchPlaces(),
-    fetchFestivals(),
-    fetchMapPins({ max: 24 }),
-  ])
-
-  homePlaces.value = places
-  homeFestivals.value = festivals
-  homeMapPins.value = pins
-
   try {
-    const { pagination } = await fetchCommunityPosts({ page: 1, pageSize: 1 })
-    communityPostsCount.value = pagination.total ?? 0
+    const { places, festivals, pins, stats } = await fetchDashboardData()
+    homePlaces.value = places
+    homeFestivals.value = festivals
+    homeMapPins.value = pins
+    dashboardStats.value = stats
+    communityPostsCount.value = stats.community_posts_count
   } catch {
-    communityPostsCount.value = 0
+    homePlaces.value = await fetchPlaces()
+    homeFestivals.value = await fetchFestivals()
+    homeMapPins.value = await fetchMapPins({ max: 24 })
+    try {
+      const { pagination } = await fetchCommunityPosts({ page: 1, pageSize: 1 })
+      communityPostsCount.value = pagination.total ?? 0
+    } catch {
+      communityPostsCount.value = 0
+    }
+    dashboardStats.value = {
+      place_count: homePlaces.value.length,
+      festival_count: homeFestivals.value.length,
+      community_posts_count: communityPostsCount.value,
+      type_counts: {
+        attraction: homePlaces.value.filter((item) => item.type === 'attraction').length,
+        nature: homePlaces.value.filter((item) => item.type === 'nature').length,
+        accommodation: homePlaces.value.filter((item) => item.type === 'accommodation').length,
+      },
+    }
   }
 
   activeShowcaseIndex.value = 0
