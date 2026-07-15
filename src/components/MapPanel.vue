@@ -1,6 +1,6 @@
 <template>
   <div class="map-panel">
-    <div ref="mapElement" class="kakao-map" aria-label="서울 관광지와 맛집 카카오 지도"></div>
+    <div ref="mapElement" class="kakao-map" aria-label="서울 현지 추천 장소와 맛집 지도"></div>
     <div v-if="statusMessage" class="map-status">
       <strong>{{ statusTitle }}</strong>
       <span>{{ statusMessage }}</span>
@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #e8edf4;
+  background: var(--map-panel-bg);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
 
@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
   text-align: center;
   background:
     linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(239, 68, 68, 0.08)),
-    rgba(248, 250, 252, 0.88);
+    var(--map-status-bg);
   backdrop-filter: blur(6px);
 }
 
@@ -274,6 +274,20 @@ onBeforeUnmount(() => {
   color: #64748b;
   font-size: 0.68rem;
   font-weight: 800;
+}
+
+:global([data-theme='dark'] .kakao-pin) {
+  color: #0a0a0a;
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+:global([data-theme='dark'] .kakao-pin-label) {
+  color: #0a0a0a;
+}
+
+:global([data-theme='dark'] .kakao-pin-type) {
+  color: #525252;
 }
 
 @media (max-width: 720px) {
