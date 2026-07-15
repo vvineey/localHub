@@ -244,7 +244,7 @@ export const mapPins = [
 ]
 
 export const aiSuggestions = [
-  '서울 인기 관광지 추천해줘',
+  '오늘 가기 좋은 현지 추천 장소 알려줘',
   '7월 축제 일정 알려줘',
   '3일 여행 예산은?',
   '대중교통 이동 팁 알려줘',
