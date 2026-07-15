@@ -3,7 +3,7 @@
     <div class="container">
       <div class="page-title">
         <h1>서울 지도 시각화</h1>
-        <p>좌표가 있는 관광지, 자연, 숙박, 축제 데이터를 지도 핀으로 확인합니다.</p>
+        <p>백엔드 서울 JSON 데이터의 좌표가 있는 장소를 지도 핀으로 확인합니다.</p>
       </div>
 
       <div class="map-layout">
@@ -28,7 +28,7 @@
           <p v-if="!selected">지도 위 핀을 선택하면 이름과 분류가 표시됩니다.</p>
           <template v-else>
             <span class="badge">{{ labelFor(selected.type) }}</span>
-            <p>FastAPI locations 테이블의 좌표 필드를 연결하면 이 영역에 상세 정보와 링크를 추가할 수 있습니다.</p>
+            <p>백엔드 `/api/places`에서 불러온 좌표 데이터를 기준으로 표시합니다.</p>
           </template>
           <StatBars :items="stats" />
         </aside>
@@ -38,13 +38,15 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
-import { mapPins } from '../data/localhub'
+import { mapPins as fallbackMapPins } from '../data/localhub'
+import { fetchMapPins } from '../services/localHubApi'
 
 const activeFilter = ref('all')
 const selected = ref(null)
+const mapPins = ref([...fallbackMapPins])
 
 const filters = [
   { id: 'all', label: '전체' },
@@ -57,13 +59,13 @@ const filters = [
 
 const filteredPins = computed(() =>
   activeFilter.value === 'all'
-    ? mapPins
-    : mapPins.filter((pin) => pin.type === activeFilter.value),
+    ? mapPins.value
+    : mapPins.value.filter((pin) => pin.type === activeFilter.value),
 )
 
 const stats = computed(() =>
   filters.slice(1).map((filter, index) => {
-    const count = mapPins.filter((pin) => pin.type === filter.id).length
+    const count = mapPins.value.filter((pin) => pin.type === filter.id).length
     return {
       label: filter.label,
       value: count,
@@ -76,6 +78,10 @@ const stats = computed(() =>
 function labelFor(type) {
   return filters.find((filter) => filter.id === type)?.label || type
 }
+
+onMounted(async () => {
+  mapPins.value = await fetchMapPins()
+})
 </script>
 
 <style scoped>
