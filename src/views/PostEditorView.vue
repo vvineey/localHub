@@ -65,7 +65,7 @@ const props = defineProps({
 
 const router = useRouter()
 const { t, te } = useI18n()
-const categories = ['맛집/카페', '일정', '사진', '팁', '자연']
+const categories = ['맛집/카페', '일정', '사진', '팁', '자연', '질문']
 const isEdit = computed(() => Boolean(props.id))
 
 function categoryLabel(category) {

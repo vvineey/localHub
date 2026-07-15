@@ -67,6 +67,7 @@ const messages = {
       schedule: '일정',
       photo: '사진',
       tips: '팁',
+      question: '질문',
     },
     categoryLabels: {
       전체: '전체',
@@ -85,6 +86,7 @@ const messages = {
       일정: '일정',
       사진: '사진',
       팁: '팁',
+      질문: '질문',
     },
     home: {
       eyebrow: '현지인의 추천 장소로 시작하는 서울 여행',
@@ -275,6 +277,7 @@ const messages = {
       schedule: 'Itinerary',
       photo: 'Photo',
       tips: 'Tips',
+      question: 'Question',
     },
     categoryLabels: {
       전체: 'All',
@@ -293,6 +296,7 @@ const messages = {
       일정: 'Itinerary',
       사진: 'Photo',
       팁: 'Tips',
+      질문: 'Question',
     },
     home: {
       eyebrow: 'Start Seoul with local picks',
@@ -483,6 +487,7 @@ const messages = {
       schedule: '行程',
       photo: '照片',
       tips: '攻略',
+      question: '问题',
     },
     categoryLabels: {
       전체: '全部',
@@ -501,6 +506,7 @@ const messages = {
       일정: '行程',
       사진: '照片',
       팁: '攻略',
+      질문: '问题',
     },
     home: {
       eyebrow: '从本地人推荐开始首尔旅行',
@@ -691,6 +697,7 @@ const messages = {
       schedule: '日程',
       photo: '写真',
       tips: 'ヒント',
+      question: '質問',
     },
     categoryLabels: {
       전체: 'すべて',
@@ -709,6 +716,7 @@ const messages = {
       일정: '日程',
       사진: '写真',
       팁: 'ヒント',
+      질문: '質問',
     },
     home: {
       eyebrow: '現地のおすすめから始めるソウル旅',
