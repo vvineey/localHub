@@ -43,6 +43,45 @@
       </div>
     </section>
 
+    <section v-if="popularPosts.length" class="container community-container realtime-popular">
+      <div class="realtime-popular-header">
+        <div>
+          <span>{{ t('community.realtimePopularKicker') }}</span>
+          <h2>{{ t('community.realtimePopularTitle') }}</h2>
+        </div>
+        <span>{{ t('community.realtimePopularMetric') }}</span>
+      </div>
+
+      <div class="realtime-popular-list">
+        <RouterLink
+          v-for="(post, index) in popularPosts"
+          :key="post.id"
+          class="realtime-popular-row"
+          :to="`/community/${post.id}`"
+        >
+          <strong>{{ index + 1 }}</strong>
+          <div>
+            <h3>{{ post.title }}</h3>
+            <Transition name="realtime-comment" mode="out-in">
+              <p v-if="activePopularComment(post)" :key="popularCommentKey(post)">
+                <MessageCircle :size="14" />
+                <b>{{ activePopularComment(post).author_name || t('community.anonymous') }}</b>
+                {{ activePopularComment(post).content }}
+              </p>
+              <p v-else :key="popularCommentKey(post)">
+                <MessageCircle :size="14" />
+                {{ t('community.noComments') }}
+              </p>
+            </Transition>
+          </div>
+          <span>
+            <Eye :size="14" />
+            {{ post.views.toLocaleString() }}
+          </span>
+        </RouterLink>
+      </div>
+    </section>
+
     <div class="container community-container board-content">
       <div class="search-row board-search">
         <Search :size="17" />
@@ -62,6 +101,20 @@
         </button>
       </div>
 
+      <div class="sort-row" role="group" :aria-label="t('community.sortAria')">
+        <button
+          v-for="option in sortOptions"
+          :key="option.value"
+          type="button"
+          class="sort-button"
+          :class="{ active: sortMode === option.value }"
+          @click="sortMode = option.value"
+        >
+          <component :is="option.icon" :size="15" />
+          {{ option.label }}
+        </button>
+      </div>
+
       <div class="post-list">
         <article v-for="post in pagedPosts" :key="post.id" class="post-card card">
           <RouterLink :to="`/community/${post.id}`" class="post-main">
@@ -72,6 +125,20 @@
             <h2>{{ post.title }}</h2>
             <p class="line-clamp">{{ post.content }}</p>
           </RouterLink>
+          <div v-if="commentPreview(post).length" class="post-comment-preview">
+            <article
+              v-for="(comment, index) in commentPreview(post)"
+              :key="comment.id"
+              class="preview-comment"
+              :class="{ 'is-faded': index === 1 }"
+            >
+              <MessageCircle :size="14" />
+              <p>
+                <strong>{{ comment.author_name || t('community.anonymous') }}</strong>
+                {{ comment.content }}
+              </p>
+            </article>
+          </div>
           <div class="post-meta">
             <button type="button" :title="post.liked ? '좋아요 취소' : '좋아요'" @click="toggleLike(post.id)">
               <Heart :size="15" :fill="post.liked ? 'currentColor' : 'none'" />
@@ -111,29 +178,37 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ChevronLeft,
   ChevronRight,
+  Clock,
   Eye,
   Heart,
+  MessageCircle,
   MessageSquare,
   Search,
+  TrendingUp,
 } from '@lucide/vue'
 import { places as fallbackLocalPickPlaces } from '../data/localhub'
-import { fetchPlacesPage, fetchCommunityPosts } from '../services/localHubApi'
+import { fetchPlacesPage, fetchCommunityPosts, fetchPopularCommunityPosts, updateCommunityPost } from '../services/localHubApi'
 
 const { locale, t, te } = useI18n()
 const keyword = ref('')
 const activeCategory = ref('전체')
+const sortMode = ref('latest')
 const page = ref(1)
 const posts = ref([])
-const localPickPlaces = ref([])
-const isLocalPickReady = ref(false)
+const popularPosts = ref([])
+const activeCommentIndex = ref(0)
+const localPickPlaces = ref([...fallbackLocalPickPlaces])
+const isLocalPickReady = ref(true)
 const pickScroller = ref(null)
 const pageSize = 4
+const COMMENT_ROTATE_INTERVAL_MS = 2800
+let commentRotateTimerId = null
 const basePostCategories = ['맛집/카페', '일정', '사진', '팁', '자연', '질문']
 
 const currentMonthLabel = computed(() =>
@@ -141,6 +216,10 @@ const currentMonthLabel = computed(() =>
 )
 
 const localPickCards = computed(() => localPickPlaces.value.slice(0, 6))
+const sortOptions = computed(() => [
+  { value: 'latest', label: t('community.sortLatest'), icon: Clock },
+  { value: 'popular', label: t('community.sortPopular'), icon: TrendingUp },
+])
 
 const postCategories = computed(() => [
   '전체',
@@ -185,11 +264,33 @@ async function toggleLike(postId) {
 
 async function loadPosts() {
   try {
-    const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100 })
+    const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100, sort: sortMode.value })
     posts.value = items.map((post) => ({ ...post, liked: false }))
   } catch {
     posts.value = []
   }
+}
+
+function commentPreview(post) {
+  return Array.isArray(post.comment_preview) ? post.comment_preview.slice(0, 2) : []
+}
+
+function popularComments(post) {
+  return Array.isArray(post.comment_preview)
+    ? post.comment_preview.filter((comment) => comment?.content)
+    : []
+}
+
+function activePopularComment(post) {
+  const comments = popularComments(post)
+  if (!comments.length) return null
+
+  return comments[activeCommentIndex.value % comments.length]
+}
+
+function popularCommentKey(post) {
+  const comment = activePopularComment(post)
+  return comment ? `${post.id}-${comment.id}` : `${post.id}-empty`
 }
 
 function categoryLabel(category) {
@@ -217,23 +318,52 @@ function handlePickWheel(event) {
 }
 
 async function loadLocalPickPlaces() {
-  const { items } = await fetchPlacesPage({
-    page: 1,
-    pageSize: 6,
-    fallbackOnError: false,
-  })
+  try {
+    const { items } = await fetchPlacesPage({
+      page: 1,
+      pageSize: 6,
+      fallbackOnError: false,
+    })
 
-  localPickPlaces.value = items
-  isLocalPickReady.value = true
+    if (items.length) {
+      localPickPlaces.value = items
+    }
+  } catch {
+    localPickPlaces.value = [...fallbackLocalPickPlaces]
+  } finally {
+    isLocalPickReady.value = true
+  }
+}
+
+async function loadPopularPosts() {
+  try {
+    popularPosts.value = await fetchPopularCommunityPosts({ limit: 3 })
+  } catch {
+    popularPosts.value = []
+  }
 }
 
 watch([keyword, activeCategory], () => {
   page.value = 1
 })
 
-onMounted(async () => {
+watch(sortMode, async () => {
+  page.value = 1
   await loadPosts()
+})
+
+onMounted(async () => {
+  await Promise.all([loadPosts(), loadPopularPosts()])
   loadLocalPickPlaces()
+  commentRotateTimerId = window.setInterval(() => {
+    activeCommentIndex.value += 1
+  }, COMMENT_ROTATE_INTERVAL_MS)
+})
+
+onBeforeUnmount(() => {
+  if (commentRotateTimerId) {
+    window.clearInterval(commentRotateTimerId)
+  }
 })
 </script>
 
@@ -257,6 +387,133 @@ onMounted(async () => {
 
 .board-content {
   margin-top: 0;
+}
+
+.realtime-popular {
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+.realtime-popular-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 2px 12px;
+}
+
+.realtime-popular-header span {
+  color: var(--muted-light);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.realtime-popular-header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 1.18rem;
+  line-height: 1.28;
+}
+
+.realtime-popular-list {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.realtime-popular-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 78px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.realtime-popular-row:last-child {
+  border-bottom: 0;
+}
+
+.realtime-popular-row:hover {
+  background: var(--surface-soft);
+  transform: translateX(3px);
+}
+
+.realtime-popular-row > strong {
+  color: var(--primary);
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.realtime-popular-row div {
+  min-width: 0;
+}
+
+.realtime-popular-row h3 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.realtime-popular-row p,
+.realtime-popular-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-light);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.realtime-popular-row p {
+  overflow: hidden;
+  max-width: 100%;
+  margin: 7px 0 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.realtime-popular-row p svg {
+  flex: 0 0 auto;
+}
+
+.realtime-popular-row p b {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.realtime-comment-enter-active,
+.realtime-comment-leave-active {
+  transition:
+    opacity 360ms ease,
+    filter 360ms ease,
+    transform 360ms ease;
+}
+
+.realtime-comment-enter-from {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translateY(6px);
+}
+
+.realtime-comment-leave-to {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translateY(-6px);
+}
+
+.realtime-popular-row > span {
+  justify-self: end;
 }
 
 .local-pick-section {
@@ -393,6 +650,33 @@ onMounted(async () => {
   margin-bottom: 12px;
 }
 
+.sort-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 13px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.sort-button.active {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 .post-list {
   display: grid;
   gap: 12px;
@@ -430,6 +714,66 @@ onMounted(async () => {
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.58;
+}
+
+.post-comment-preview {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  padding: 0 18px 14px;
+}
+
+.post-comment-preview::after {
+  position: absolute;
+  right: 18px;
+  bottom: 10px;
+  left: 18px;
+  height: 22px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--surface));
+}
+
+:global([data-theme='dark']) .post-comment-preview::after {
+  background: linear-gradient(180deg, rgba(5, 5, 5, 0), var(--surface));
+}
+
+.preview-comment {
+  display: grid;
+  align-items: start;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 38px;
+  padding: 9px 10px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+.preview-comment.is-faded {
+  opacity: 0.54;
+  mask-image: linear-gradient(180deg, #000 48%, rgba(0, 0, 0, 0));
+}
+
+.preview-comment svg {
+  margin-top: 2px;
+  color: var(--muted-light);
+}
+
+.preview-comment p {
+  overflow: hidden;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-comment strong {
+  margin-right: 6px;
+  color: var(--text);
+  font-weight: 850;
 }
 
 .post-meta {
@@ -479,6 +823,20 @@ onMounted(async () => {
 }
 
 @media (max-width: 620px) {
+  .realtime-popular-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .realtime-popular-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .realtime-popular-row > span {
+    display: none;
+  }
+
   .local-pick-section {
     margin-top: 2px;
     padding: 20px 0 28px;

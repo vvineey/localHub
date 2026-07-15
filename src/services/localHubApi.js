@@ -248,6 +248,94 @@ function normalizePagination(pagination, fallbackPage, fallbackSize, fallbackTot
   }
 }
 
+function extractArrayPayload(payload, keys = []) {
+  if (Array.isArray(payload)) return payload
+
+  for (const key of keys) {
+    const value = payload?.[key]
+    if (Array.isArray(value)) return value
+    if (Array.isArray(value?.items)) return value.items
+    if (Array.isArray(value?.data)) return value.data
+    if (Array.isArray(value?.results)) return value.results
+  }
+
+  for (const key of ['items', 'data', 'posts', 'comments', 'results', 'content']) {
+    const value = payload?.[key]
+    if (Array.isArray(value)) return value
+    if (Array.isArray(value?.items)) return value.items
+    if (Array.isArray(value?.data)) return value.data
+    if (Array.isArray(value?.results)) return value.results
+  }
+
+  return []
+}
+
+function normalizeComment(comment = {}) {
+  return {
+    id: comment.id,
+    post_id: comment.post_id ?? comment.postId,
+    author_name: comment.author_name ?? comment.authorName ?? '',
+    content: comment.content || '',
+    created_at: comment.created_at ?? comment.createdAt ?? comment.date ?? '',
+    date: comment.date ?? comment.created_at ?? comment.createdAt ?? '',
+  }
+}
+
+function normalizePost(post = {}) {
+  const rawPreview =
+    post.comment_preview ||
+    post.commentPreview ||
+    post.comments_preview ||
+    post.preview_comments ||
+    []
+  const commentPreview = Array.isArray(rawPreview)
+    ? rawPreview.map(normalizeComment)
+    : []
+
+  return {
+    ...post,
+    views: Number(post.views) || 0,
+    likes: Number(post.likes) || 0,
+    comments: Number(post.comments) || 0,
+    comment_preview: commentPreview,
+  }
+}
+
+function sortPostsByViews(posts = []) {
+  return [...posts].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0) || Number(b.id) - Number(a.id))
+}
+
+async function fetchCommentPreview(postId) {
+  const payload = await requestJson(`/comments/posts/${postId}`)
+  return extractArrayPayload(payload, ['comments']).map(normalizeComment)
+}
+
+async function withCommentPreview(posts = []) {
+  return Promise.all(
+    posts.map(async (post) => {
+      if (Array.isArray(post.comment_preview) && post.comment_preview.length) {
+        return post
+      }
+
+      try {
+        const comments = await fetchCommentPreview(post.id)
+        return {
+          ...post,
+          comments: post.comments || comments.length,
+          comment_preview: comments.slice(0, 5),
+        }
+      } catch {
+        return post
+      }
+    }),
+  )
+}
+
+async function fetchPopularPostsFromList(limit) {
+  const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100, sort: 'popular' })
+  return withCommentPreview(sortPostsByViews(items).slice(0, limit))
+}
+
 async function loadApiPlaces() {
   if (placesCache) return placesCache
   if (placesPromise) return placesPromise
@@ -368,20 +456,45 @@ export async function fetchDashboardData() {
   }
 }
 
-export async function fetchCommunityPosts({ page = 1, pageSize = 100 } = {}) {
+export async function fetchCommunityPosts({ page = 1, pageSize = 100, sort = 'latest' } = {}) {
   const safePage = Math.max(1, Number(page) || 1)
   const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 100))
   const skip = (safePage - 1) * safePageSize
 
-  const payload = await requestJson(`/posts?skip=${skip}&limit=${safePageSize}`)
+  const params = new URLSearchParams({
+    skip: String(skip),
+    limit: String(safePageSize),
+    sort,
+  })
+  const payload = await requestJson(`/posts?${params.toString()}`)
+  const items = extractArrayPayload(payload, ['posts']).map(normalizePost)
+
   return {
-    items: Array.isArray(payload.items) ? payload.items : [],
-    pagination: payload.pagination || { page: safePage, size: safePageSize, total: 0 },
+    items,
+    pagination: payload.pagination || { page: safePage, size: safePageSize, total: items.length },
   }
 }
 
 export async function fetchCommunityPostById(id) {
-  return requestJson(`/posts/${id}`)
+  return normalizePost(await requestJson(`/posts/${id}`))
+}
+
+export async function fetchPopularCommunityPosts({ limit = 5 } = {}) {
+  const safeLimit = Math.min(20, Math.max(1, Number(limit) || 5))
+
+  try {
+    const payload = await requestJson(`/posts/popular?limit=${safeLimit}`)
+    const items = extractArrayPayload(payload, ['posts'])
+    const popularPosts = items.map(normalizePost).slice(0, safeLimit)
+
+    if (!popularPosts.length) {
+      return fetchPopularPostsFromList(safeLimit)
+    }
+
+    return withCommentPreview(popularPosts)
+  } catch {
+    return fetchPopularPostsFromList(safeLimit)
+  }
 }
 
 export async function createCommunityPost(payload) {
@@ -415,7 +528,8 @@ export async function verifyCommunityPostPassword(id, password) {
 }
 
 export async function fetchCommentsByPostId(postId) {
-  return requestJson(`/comments/posts/${postId}`)
+  const payload = await requestJson(`/comments/posts/${postId}`)
+  return extractArrayPayload(payload, ['comments']).map(normalizeComment)
 }
 
 export async function createComment(postId, payload) {

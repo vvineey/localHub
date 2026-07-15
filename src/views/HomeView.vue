@@ -93,19 +93,58 @@
       </div>
     </section>
 
-    <section class="section split-band">
-      <div class="container split-layout">
-        <div>
-          <span class="badge green">{{ t('home.neighborhoodCuration') }}</span>
-          <h2>{{ t('home.mapTitle') }}</h2>
-          <p>
-            {{ t('home.mapCopy') }}
-          </p>
-          <RouterLink class="btn btn-primary" to="/map">
-            {{ t('home.viewOnMap') }} <Map :size="16" />
+    <section class="section split-band hot-post-band">
+      <div class="container hot-post-layout">
+        <div class="hot-post-copy">
+          <span class="badge green">{{ t('home.hotPostsBadge') }}</span>
+          <h2>{{ t('home.hotPostsTitle') }}</h2>
+          <p v-html="t('home.hotPostsCopy')"></p>
+          <RouterLink class="btn btn-primary" to="/community">
+            {{ t('home.viewHotPosts') }} <ArrowRight :size="16" />
           </RouterLink>
         </div>
-        <MapPanel :pins="homeMapPins.slice(0, 7)" @select="selectedPin = $event" />
+
+        <div class="hot-post-panel" :aria-label="t('home.hotPostsAria')">
+          <div class="hot-post-header">
+            <strong>{{ t('home.hotPostsNow') }}</strong>
+            <span>{{ t('home.hotPostsUpdated') }}</span>
+          </div>
+          <div v-if="popularPostsLoading" class="hot-post-state">
+            {{ t('home.hotPostsLoading') }}
+          </div>
+          <div v-else-if="popularPostsError" class="hot-post-state">
+            {{ t('home.hotPostsError') }}
+          </div>
+          <div v-else-if="homePopularPosts.length === 0" class="hot-post-state">
+            {{ t('home.hotPostsEmpty') }}
+          </div>
+          <template v-else>
+            <RouterLink
+              v-for="(post, index) in homePopularPosts"
+              :key="post.id"
+              class="hot-post-row"
+              :to="`/community/${post.id}`"
+            >
+              <span class="hot-post-rank">{{ index + 1 }}</span>
+              <div class="hot-post-body">
+                <strong class="hot-post-title">{{ post.title }}</strong>
+                <Transition name="hot-comment" mode="out-in">
+                  <span :key="commentKey(post)" class="hot-post-comment">
+                    <MessageSquare :size="14" />
+                    <template v-if="activeComment(post)">
+                      <b>{{ activeComment(post).author_name || t('community.anonymous') }}</b>
+                      {{ activeComment(post).content }}
+                    </template>
+                    <template v-else>
+                      {{ t('home.hotPostsNoComment') }}
+                    </template>
+                  </span>
+                </Transition>
+              </div>
+              <ArrowUpRight :size="18" />
+            </RouterLink>
+          </template>
+        </div>
       </div>
     </section>
 
@@ -153,18 +192,17 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowRight, CalendarDays, Map, MapPin, MessageCircle, Search, Sparkles, Star, Users } from '@lucide/vue'
-import MapPanel from '../components/MapPanel.vue'
+import { ArrowRight, ArrowUpRight, CalendarDays, Map, MapPin, MessageCircle, MessageSquare, Search, Sparkles, Star, Users } from '@lucide/vue'
 import StatBars from '../components/StatBars.vue'
-import { festivals as fallbackFestivals, mapPins as fallbackMapPins, places as fallbackPlaces } from '../data/localhub'
-import { fetchDashboardData, fetchCommunityPosts, fetchPlaces, fetchFestivals, fetchMapPins } from '../services/localHubApi'
+import { festivals as fallbackFestivals, places as fallbackPlaces } from '../data/localhub'
+import { fetchDashboardData, fetchCommunityPosts, fetchFestivals, fetchPlaces, fetchPopularCommunityPosts } from '../services/localHubApi'
 
 const HERO_SLIDE_INTERVAL_MS = 2000
+const COMMENT_ROTATE_INTERVAL_MS = 2800
 
 const { t, te } = useI18n()
 const router = useRouter()
 const keyword = ref('')
-const selectedPin = ref(null)
 const activeHeroIndex = ref(0)
 const communityPostsCount = ref(0)
 const dashboardStats = ref({
@@ -178,11 +216,15 @@ const dashboardStats = ref({
   },
 })
 const activeShowcaseIndex = ref(0)
+const activeCommentIndex = ref(0)
 const showcaseCardRefs = ref([])
 const homePlaces = ref([...fallbackPlaces])
 const homeFestivals = ref([...fallbackFestivals])
-const homeMapPins = ref([...fallbackMapPins])
+const homePopularPosts = ref([])
+const popularPostsLoading = ref(true)
+const popularPostsError = ref(false)
 let heroSlideTimerId = null
+let commentRotateTimerId = null
 let showcaseObserver = null
 
 const heroImages = [
@@ -257,6 +299,23 @@ function setShowcaseCardRef(element, index) {
   }
 }
 
+function postComments(post) {
+  return Array.isArray(post.comment_preview)
+    ? post.comment_preview.filter((comment) => comment?.content)
+    : []
+}
+
+function activeComment(post) {
+  const comments = postComments(post)
+  if (!comments.length) return null
+  return comments[activeCommentIndex.value % comments.length]
+}
+
+function commentKey(post) {
+  const comment = activeComment(post)
+  return comment ? `${post.id}-${comment.id}` : `${post.id}-no-comment`
+}
+
 function observeShowcaseCards() {
   if ('IntersectionObserver' in window) {
     if (showcaseObserver) {
@@ -287,16 +346,14 @@ function observeShowcaseCards() {
 
 async function loadHomeData() {
   try {
-    const { places, festivals, pins, stats } = await fetchDashboardData()
+    const { places, festivals, stats } = await fetchDashboardData()
     homePlaces.value = places
     homeFestivals.value = festivals
-    homeMapPins.value = pins
     dashboardStats.value = stats
     communityPostsCount.value = stats.community_posts_count
   } catch {
     homePlaces.value = await fetchPlaces()
     homeFestivals.value = await fetchFestivals()
-    homeMapPins.value = await fetchMapPins({ max: 24 })
     try {
       const { pagination } = await fetchCommunityPosts({ page: 1, pageSize: 1 })
       communityPostsCount.value = pagination.total ?? 0
@@ -320,6 +377,21 @@ async function loadHomeData() {
   observeShowcaseCards()
 }
 
+async function loadPopularPosts() {
+  popularPostsLoading.value = true
+  popularPostsError.value = false
+
+  try {
+    homePopularPosts.value = await fetchPopularCommunityPosts({ limit: 5 })
+    activeCommentIndex.value = 0
+  } catch {
+    homePopularPosts.value = []
+    popularPostsError.value = true
+  } finally {
+    popularPostsLoading.value = false
+  }
+}
+
 onMounted(() => {
   if (heroImages.length > 1) {
     heroSlideTimerId = window.setInterval(() => {
@@ -327,13 +399,22 @@ onMounted(() => {
     }, HERO_SLIDE_INTERVAL_MS)
   }
 
+  commentRotateTimerId = window.setInterval(() => {
+    activeCommentIndex.value += 1
+  }, COMMENT_ROTATE_INTERVAL_MS)
+
   observeShowcaseCards()
   loadHomeData()
+  loadPopularPosts()
 })
 
 onBeforeUnmount(() => {
   if (heroSlideTimerId) {
     window.clearInterval(heroSlideTimerId)
+  }
+
+  if (commentRotateTimerId) {
+    window.clearInterval(commentRotateTimerId)
   }
 
   if (showcaseObserver) {
@@ -739,24 +820,166 @@ function goSearch() {
   background: var(--surface-strong);
 }
 
-.split-layout {
+.hot-post-band {
+  padding: 76px 0;
+}
+
+.hot-post-layout {
   display: grid;
   align-items: center;
   grid-template-columns: 0.8fr 1.2fr;
-  gap: 28px;
+  gap: 34px;
 }
 
-.split-layout h2 {
+.hot-post-copy h2 {
   margin: 16px 0 12px;
   font-size: 2.2rem;
   line-height: 1.16;
 }
 
-.split-layout p {
+.hot-post-copy p {
   max-width: 520px;
   margin: 0 0 22px;
   color: var(--muted);
   line-height: 1.7;
+}
+
+.hot-post-panel {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.hot-post-header,
+.hot-post-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 52px minmax(0, 1fr) 24px;
+  gap: 12px;
+}
+
+.hot-post-header {
+  padding: 18px 20px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.88rem;
+}
+
+.hot-post-header strong {
+  grid-column: 1 / 3;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.hot-post-header span {
+  justify-self: end;
+  color: var(--muted-light);
+  font-size: 0.78rem;
+}
+
+.hot-post-state {
+  padding: 34px 20px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.92rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.hot-post-row {
+  min-height: 92px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.hot-post-row:last-child {
+  border-bottom: 0;
+}
+
+.hot-post-row:hover {
+  color: var(--primary);
+  background: var(--surface-soft);
+  transform: translateX(3px);
+}
+
+.hot-post-rank {
+  color: var(--primary);
+  font-size: 1.24rem;
+  font-weight: 850;
+}
+
+.hot-post-body {
+  min-width: 0;
+}
+
+.hot-post-title {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 1.02rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hot-post-comment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  min-height: 22px;
+  margin-top: 8px;
+  color: var(--muted-light);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hot-post-comment svg {
+  flex: 0 0 auto;
+}
+
+.hot-post-comment b {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.hot-post-row > svg {
+  color: var(--muted-light);
+}
+
+.hot-post-row:hover .hot-post-title,
+.hot-post-row:hover > svg {
+  color: var(--primary);
+}
+
+.hot-comment-enter-active,
+.hot-comment-leave-active {
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease,
+    filter 360ms ease;
+}
+
+.hot-comment-enter-from {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translateY(6px);
+}
+
+.hot-comment-leave-to {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translateY(-6px);
 }
 
 .home-bottom {
@@ -804,7 +1027,7 @@ function goSearch() {
 @media (max-width: 900px) {
   .quick-stats,
   .popular-showcase,
-  .split-layout,
+  .hot-post-layout,
   .home-bottom {
     grid-template-columns: 1fr;
   }
@@ -891,6 +1114,22 @@ function goSearch() {
 
   .popular-visual-overlay {
     padding: 76px 18px 20px;
+  }
+
+  .hot-post-band {
+    padding: 54px 0;
+  }
+
+  .hot-post-header,
+  .hot-post-row {
+    grid-template-columns: 34px minmax(0, 1fr) 20px;
+    gap: 10px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .hot-post-title {
+    white-space: normal;
   }
 
   .festival-row {
