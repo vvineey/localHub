@@ -134,16 +134,34 @@ function fitMapToPins() {
   if (!kakaoMaps.value || !map.value || !coordinatePins.value.length) return
 
   const bounds = new kakaoMaps.value.LatLngBounds()
-  coordinatePins.value.forEach((pin) => {
-    bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
-  })
+  const userLat = Number(props.userLocation?.lat)
+  const userLng = Number(props.userLocation?.lng)
+  const hasUserLocation = Number.isFinite(userLat) && Number.isFinite(userLng)
 
-  const lat = Number(props.userLocation?.lat)
-  const lng = Number(props.userLocation?.lng)
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    bounds.extend(new kakaoMaps.value.LatLng(lat, lng))
+  if (hasUserLocation) {
+    // 1. 내 위치를 바운드에 포함
+    bounds.extend(new kakaoMaps.value.LatLng(userLat, userLng))
+
+    // 2. 핀들을 내 위치와의 거리순으로 정렬
+    const sortedPins = [...coordinatePins.value].sort((a, b) => {
+      const distA = Math.pow(a.lat - userLat, 2) + Math.pow(a.lng - userLng, 2)
+      const distB = Math.pow(b.lat - userLat, 2) + Math.pow(b.lng - userLng, 2)
+      return distA - distB
+    })
+
+    // 3. 가장 가까운 5개의 핀만 바운드 계산에 사용 (다른 핀들은 지도엔 있지만 화면 밖으로 밀려남)
+    const closestPins = sortedPins.slice(0, 5)
+    closestPins.forEach((pin) => {
+      bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
+    })
+  } else {
+    // 4. 내 위치가 없을 때는 기존처럼 모든 핀을 포함
+    coordinatePins.value.forEach((pin) => {
+      bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
+    })
   }
 
+  // 계산된 바운드로 지도 화면 이동
   map.value.setBounds(bounds, 48, 48, 48, 48)
 }
 
