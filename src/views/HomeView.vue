@@ -14,9 +14,9 @@
       </div>
       <div class="hero-overlay"></div>
       <div class="hero-content container">
-        <span class="eyebrow"><Sparkles :size="15" /> 현지인이 고른 서울 여행 큐레이션</span>
+        <span class="eyebrow"><Sparkles :size="15" /> 현지인의 추천 장소로 시작하는 서울 여행</span>
         <h1>Local-In</h1>
-        <p>유명한 코스보다 오늘 가기 좋은 동네 장소와 생생한 후기를 먼저 만나보세요.</p>
+        <p>익숙한 코스보다 오늘 머물기 좋은 동네와 생생한 후기를 먼저 만나보세요.</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
           <input v-model="keyword" type="search" placeholder="동네, 분위기, 현지 추천 검색" />
@@ -49,24 +49,26 @@
               ></span>
             </div>
 
-            <Transition name="popular-fade" mode="out-in">
-              <div :key="activeShowcasePlace.id" class="popular-text">
-                <span class="popular-count">
-                  {{ formattedActiveShowcaseIndex }} / {{ formattedShowcaseTotal }}
-                </span>
-                <span class="popular-kicker">LOCAL PICK</span>
-                <h3>현지인이 추천하는<br />오늘의 관광지</h3>
-                <p class="popular-place-name">{{ activeShowcasePlace.name }}</p>
-                <p class="popular-summary">{{ activeShowcasePlace.summary }}</p>
-                <div class="popular-meta">
-                  <span><MapPin :size="16" /> {{ activeShowcasePlace.district }}</span>
-                  <span><Star :size="16" fill="currentColor" /> {{ activeShowcasePlace.rating }}</span>
-                </div>
-                <RouterLink class="btn btn-secondary" to="/explore">
-                  전체 보기 <ArrowRight :size="16" />
-                </RouterLink>
+            <div class="popular-text">
+              <span class="popular-count">
+                {{ formattedActiveShowcaseIndex }} / {{ formattedShowcaseTotal }}
+              </span>
+              <span class="popular-kicker">LOCAL PICK</span>
+              <h3>현지인이 추천하는<br />오늘의 관광지</h3>
+              <Transition name="place-chip" mode="out-in">
+                <p :key="activeShowcasePlace.id" class="popular-place-name">
+                  <span>{{ activeShowcasePlace.name }}</span>
+                </p>
+              </Transition>
+              <p class="popular-summary">{{ activeShowcasePlace.summary }}</p>
+              <div class="popular-meta">
+                <span><MapPin :size="16" /> {{ activeShowcasePlace.district }}</span>
+                <span><Star :size="16" fill="currentColor" /> {{ activeShowcasePlace.rating }}</span>
               </div>
-            </Transition>
+              <RouterLink class="btn btn-secondary" to="/explore">
+                전체 보기 <ArrowRight :size="16" />
+              </RouterLink>
+            </div>
           </div>
         </aside>
 
@@ -95,7 +97,7 @@
       <div class="container split-layout">
         <div>
           <span class="badge green">동네별 큐레이션</span>
-          <h2>현지 추천 장소를 지도 위에서 가볍게 이어보세요</h2>
+          <h2>현지인의 추천 장소를 지도 위에서 자연스럽게 이어보세요</h2>
           <p>
             카페, 산책길, 축제, 숙소를 지역별로 묶어 오늘 일정에 맞는 이동 동선을 빠르게
             확인할 수 있습니다.
@@ -518,23 +520,38 @@ function goSearch() {
 .popular-text h3 {
   margin: 0;
   color: var(--text);
-  font-size: clamp(1.8rem, 2.8vw, 2.85rem);
+  font-size: clamp(1.58rem, 2.35vw, 2.42rem);
   line-height: 1.16;
   letter-spacing: 0;
 }
 
 .popular-place-name {
-  margin: 18px 0 0;
+  width: fit-content;
+  max-width: min(100%, 440px);
+  margin: 16px 0 0;
   color: var(--text);
-  font-size: clamp(1.55rem, 2.7vw, 2.65rem);
+  font-size: clamp(1.36rem, 2.24vw, 2.28rem);
   line-height: 1.14;
   font-weight: 760;
   letter-spacing: 0;
 }
 
+.popular-place-name span {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 10px 16px 11px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 18px 42px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+
 .popular-summary {
   max-width: 430px;
-  margin: 32px 0 18px;
+  margin: 24px 0 18px;
   color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.72;
@@ -560,24 +577,33 @@ function goSearch() {
   color: var(--amber);
 }
 
-.popular-fade-enter-active,
-.popular-fade-leave-active {
+.place-chip-enter-active,
+.place-chip-leave-active {
   transition:
     opacity 560ms ease,
     transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
     filter 560ms ease;
 }
 
-.popular-fade-enter-from {
+.place-chip-enter-from {
   opacity: 0;
   filter: blur(5px);
   transform: translateY(18px);
 }
 
-.popular-fade-leave-to {
+.place-chip-leave-to {
   opacity: 0;
   filter: blur(5px);
   transform: translateY(-12px);
+}
+
+:global([data-theme='dark']) .popular-place-name span {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 22px 46px rgba(0, 0, 0, 0.38);
 }
 
 .popular-visuals {
@@ -796,7 +822,7 @@ function goSearch() {
   }
 
   .popular-place-name {
-    font-size: 1.72rem;
+    font-size: 1.58rem;
   }
 
   .popular-visual-card {
