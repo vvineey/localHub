@@ -1,9 +1,9 @@
 <template>
   <header class="site-header">
     <div class="header-inner">
-      <RouterLink class="brand" to="/" aria-label="LocalHub 홈">
+      <RouterLink class="brand" to="/" aria-label="Local-In 홈">
         <span class="brand-mark"><MapPinned :size="17" /></span>
-        <span>Local<span>Hub</span></span>
+        <span>Local<span>-In</span></span>
       </RouterLink>
 
       <nav class="desktop-nav" aria-label="주요 메뉴">
@@ -14,6 +14,16 @@
       </nav>
 
       <div class="header-actions">
+        <button
+          class="icon-btn theme-toggle"
+          type="button"
+          :aria-label="isDarkMode ? '라이트 모드로 변경' : '다크 모드로 변경'"
+          :title="isDarkMode ? '라이트 모드' : '다크 모드'"
+          @click="toggleTheme"
+        >
+          <Sun v-if="isDarkMode" :size="18" />
+          <Moon v-else :size="18" />
+        </button>
         <RouterLink class="btn btn-primary write-link" to="/community/new">
           <PenLine :size="16" />
           글쓰기
@@ -61,13 +71,17 @@ import {
   MapPinned,
   Menu,
   MessageCircle,
+  Moon,
   PenLine,
   Search,
+  Sun,
   Users,
   X,
 } from '@lucide/vue'
 
+const THEME_STORAGE_KEY = 'local-in-theme'
 const menuOpen = ref(false)
+const isDarkMode = ref(document.documentElement.dataset.theme === 'dark')
 
 const navItems = [
   { to: '/', label: '홈', icon: Home },
@@ -77,6 +91,16 @@ const navItems = [
   { to: '/festivals', label: '축제', icon: CalendarDays },
   { to: '/assistant', label: 'AI 채팅', icon: MessageCircle },
 ]
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme
+  window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  isDarkMode.value = theme === 'dark'
+}
+
+function toggleTheme() {
+  applyTheme(isDarkMode.value ? 'light' : 'dark')
+}
 </script>
 
 <style scoped>
@@ -86,7 +110,7 @@ const navItems = [
   top: 0;
   right: 0;
   left: 0;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--header-bg);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
 }
@@ -119,7 +143,7 @@ const navItems = [
   justify-content: center;
   width: 34px;
   height: 34px;
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   border-radius: var(--radius);
 }
@@ -153,6 +177,10 @@ const navItems = [
   gap: 10px;
 }
 
+.theme-toggle {
+  color: var(--primary);
+}
+
 .mobile-toggle {
   display: none;
 }
@@ -161,7 +189,7 @@ const navItems = [
   display: grid;
   gap: 6px;
   padding: 10px 12px 14px;
-  background: #fff;
+  background: var(--surface);
   border-top: 1px solid var(--line);
 }
 
@@ -183,8 +211,20 @@ const navItems = [
 }
 
 .mobile-link.primary {
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
+}
+
+:global([data-theme='dark']) .site-header {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:global([data-theme='dark']) .nav-link:hover,
+:global([data-theme='dark']) .nav-link.router-link-active,
+:global([data-theme='dark']) .mobile-link.router-link-active,
+:global([data-theme='dark']) .mobile-link:hover {
+  color: #fff;
+  background: #111;
 }
 
 @media (max-width: 860px) {
