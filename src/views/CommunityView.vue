@@ -128,13 +128,15 @@ import {
   MessageSquare,
   Search,
 } from '@lucide/vue'
-import { places as localPickPlaces } from '../data/localhub'
+import { places as fallbackLocalPickPlaces } from '../data/localhub'
+import { fetchPlacesPage } from '../services/localHubApi'
 import { useCommunityStore } from '../stores/community'
 
 const store = useCommunityStore()
 const keyword = ref('')
 const activeCategory = ref('전체')
 const page = ref(1)
+const localPickPlaces = ref([...fallbackLocalPickPlaces])
 const pickSection = ref(null)
 const pickTrack = ref(null)
 const pickTranslateX = ref(0)
@@ -144,7 +146,7 @@ let pickResizeObserver = null
 
 const currentMonthLabel = computed(() => `${new Date().getMonth() + 1}월`)
 
-const localPickCards = computed(() => localPickPlaces.slice(0, 6))
+const localPickCards = computed(() => localPickPlaces.value.slice(0, 6))
 
 const postCategories = computed(() => [
   '전체',
@@ -186,6 +188,16 @@ function measurePickScroll() {
   updatePickScroll()
 }
 
+async function loadLocalPickPlaces() {
+  const { items } = await fetchPlacesPage({ page: 1, pageSize: 6 })
+
+  if (items.length) {
+    localPickPlaces.value = items
+    await nextTick()
+    measurePickScroll()
+  }
+}
+
 watch([keyword, activeCategory], () => {
   page.value = 1
 })
@@ -200,6 +212,8 @@ onMounted(async () => {
     pickResizeObserver = new ResizeObserver(measurePickScroll)
     pickResizeObserver.observe(pickTrack.value)
   }
+
+  loadLocalPickPlaces()
 })
 
 onBeforeUnmount(() => {
