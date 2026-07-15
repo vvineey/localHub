@@ -54,4 +54,8 @@ defineProps({
   height: 100%;
   border-radius: 999px;
 }
+
+:global([data-theme='dark']) .bar-track span {
+  background: #fff !important;
+}
 </style>
