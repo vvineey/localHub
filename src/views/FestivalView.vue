@@ -8,21 +8,14 @@
 
       <div class="festival-page-stack">
         <section v-if="featuredFestivals.length" class="featured-festivals">
-          <div class="festival-section-head">
-            <div>
-              <span class="badge amber">{{ t('festivals.mvp') }}</span>
-              <h2>{{ t('festivals.featuredTitle') }}</h2>
-              <p>{{ t('festivals.featuredDescription') }}</p>
-            </div>
-          </div>
-
           <TransitionGroup name="featured-fade" tag="div" class="featured-grid">
             <RouterLink
-              v-for="festival in featuredFestivals"
+              v-for="(festival, index) in featuredFestivals"
               :key="festival.id"
               class="featured-card"
               :to="`/places/${festival.id}`"
             >
+              <span v-if="index === featuredFestivals.length - 1" class="featured-flow-mark">&lt;=&gt;</span>
               <img :src="festival.image" :alt="festival.name" />
               <div class="featured-overlay">
                 <span>{{ festival.date }}</span>
@@ -40,7 +33,6 @@
               <h2>{{ t('festivals.monthTitle') }}</h2>
               <p>{{ t('festivals.calendarDescription') }}</p>
             </div>
-            <span class="badge amber">{{ t('festivals.allFestivals') }}</span>
           </div>
 
           <div class="weekday-row">
@@ -90,7 +82,6 @@
           <div class="event-panel-head">
             <div>
               <h2>{{ t('festivals.allFestivals') }}</h2>
-              <p>{{ t('festivals.allFestivalsDescription') }}</p>
             </div>
             <span>{{ festivalRangeLabel }}</span>
           </div>
@@ -381,7 +372,6 @@ onBeforeUnmount(() => {
   gap: 22px;
 }
 
-.festival-section-head,
 .event-panel-head {
   display: flex;
   align-items: end;
@@ -389,15 +379,13 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
-.festival-section-head h2,
 .event-panel-head h2 {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--text);
   font-size: 1.22rem;
   line-height: 1.28;
 }
 
-.festival-section-head p,
 .event-panel-head p,
 .calendar-head p {
   margin: 6px 0 0;
@@ -408,7 +396,7 @@ onBeforeUnmount(() => {
 
 .featured-festivals {
   display: grid;
-  gap: 12px;
+  overflow: hidden;
 }
 
 .featured-grid {
@@ -425,6 +413,24 @@ onBeforeUnmount(() => {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+}
+
+.featured-flow-mark {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  min-width: 48px;
+  padding: 6px 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-align: center;
+  backdrop-filter: blur(10px);
 }
 
 .featured-card img {
@@ -507,10 +513,14 @@ onBeforeUnmount(() => {
     transform 420ms ease;
 }
 
-.featured-fade-enter-from,
+.featured-fade-enter-from {
+  opacity: 0;
+  transform: translateX(42px);
+}
+
 .featured-fade-leave-to {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateX(-42px);
 }
 
 .calendar {
@@ -569,6 +579,7 @@ onBeforeUnmount(() => {
 .calendar-day {
   position: relative;
   z-index: 1;
+  grid-row: 1;
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -618,12 +629,13 @@ onBeforeUnmount(() => {
 
 .calendar-event,
 .calendar-overflow {
-  z-index: 2;
+  z-index: 5;
+  grid-row: 1;
   align-self: start;
   min-width: 0;
   height: 24px;
   margin: 0 3px;
-  margin-top: calc(42px + (var(--event-row) * 27px));
+  margin-top: calc(38px + (var(--event-row) * 27px));
   border-radius: 5px;
   font-size: 0.74rem;
   font-weight: 850;
@@ -834,7 +846,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 680px) {
-  .festival-section-head,
   .event-panel-head,
   .calendar-head {
     align-items: start;
