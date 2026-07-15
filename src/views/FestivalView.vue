@@ -7,15 +7,47 @@
       </div>
 
       <div class="festival-page-stack">
-        <section v-if="featuredFestivals.length" class="featured-festivals">
-          <TransitionGroup name="featured-fade" tag="div" class="featured-grid">
+        <section
+          v-if="featuredFestivals.length"
+          class="featured-festivals"
+          @mouseenter="isFeaturedHovered = true"
+          @mouseleave="isFeaturedHovered = false"
+        >
+          <div class="featured-controls" role="group" :aria-label="t('festivals.carouselControls')">
+            <button
+              type="button"
+              class="featured-control"
+              :title="t('festivals.carouselPrevious')"
+              @click="moveFeatured(-1)"
+            >
+              <ChevronLeft :size="22" />
+            </button>
+            <button
+              type="button"
+              class="featured-control"
+              :title="isFeaturedPaused ? t('festivals.carouselPlay') : t('festivals.carouselPause')"
+              @click="toggleFeaturedRotation"
+            >
+              <Play v-if="isFeaturedPaused" :size="18" />
+              <Pause v-else :size="18" />
+            </button>
+            <button
+              type="button"
+              class="featured-control"
+              :title="t('festivals.carouselNext')"
+              @click="moveFeatured(1)"
+            >
+              <ChevronRight :size="22" />
+            </button>
+          </div>
+
+          <TransitionGroup :name="featuredTransitionName" tag="div" class="featured-grid">
             <RouterLink
-              v-for="(festival, index) in featuredFestivals"
+              v-for="festival in featuredFestivals"
               :key="festival.id"
               class="featured-card"
               :to="`/places/${festival.id}`"
             >
-              <span v-if="index === featuredFestivals.length - 1" class="featured-flow-mark">&lt;=&gt;</span>
               <img :src="festival.image" :alt="festival.name" />
               <div class="featured-overlay">
                 <span>{{ festival.date }}</span>
@@ -145,7 +177,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from '@lucide/vue'
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Pause, Play } from '@lucide/vue'
 import { festivals as fallbackFestivals } from '../data/localhub'
 import { fetchFestivals, fetchFestivalsPage } from '../services/localHubApi'
 
@@ -167,6 +199,9 @@ const festivals = ref(fallbackFestivals.slice(0, FESTIVAL_PAGE_SIZE))
 const totalFestivals = ref(fallbackFestivals.length)
 const festivalPage = ref(1)
 const featuredOffset = ref(0)
+const featuredSlideDirection = ref(1)
+const isFeaturedPaused = ref(false)
+const isFeaturedHovered = ref(false)
 const isFestivalPageLoading = ref(false)
 let festivalPageRequestId = 0
 let featuredRotateTimerId = null
@@ -184,6 +219,10 @@ const featuredFestivals = computed(() => {
     return source[(featuredOffset.value + index) % source.length]
   })
 })
+
+const featuredTransitionName = computed(() =>
+  featuredSlideDirection.value >= 0 ? 'featured-forward' : 'featured-backward',
+)
 
 const calendarWeeks = computed(() => {
   const firstWeekday = new Date(CALENDAR_YEAR, CALENDAR_MONTH_INDEX, 1).getDay()
@@ -291,6 +330,22 @@ function calendarOverflowStyle() {
   }
 }
 
+function shiftFeatured(step) {
+  const sourceLength = festivalSource.value.length
+  if (sourceLength <= 1) return
+
+  featuredSlideDirection.value = step >= 0 ? 1 : -1
+  featuredOffset.value = (featuredOffset.value + step + sourceLength) % sourceLength
+}
+
+function moveFeatured(step) {
+  shiftFeatured(step)
+}
+
+function toggleFeaturedRotation() {
+  isFeaturedPaused.value = !isFeaturedPaused.value
+}
+
 function openCalendarDay(day) {
   if (!day.value) return
 
@@ -340,8 +395,8 @@ function startFeaturedRotation() {
 
   featuredRotateTimerId = window.setInterval(() => {
     const sourceLength = festivalSource.value.length
-    if (sourceLength > FEATURED_CARD_COUNT) {
-      featuredOffset.value = (featuredOffset.value + 1) % sourceLength
+    if (sourceLength > 1 && !isFeaturedPaused.value && !isFeaturedHovered.value) {
+      shiftFeatured(1)
     }
   }, FEATURED_ROTATE_INTERVAL_MS)
 }
@@ -395,8 +450,36 @@ onBeforeUnmount(() => {
 }
 
 .featured-festivals {
+  position: relative;
   display: grid;
+  gap: 12px;
   overflow: hidden;
+}
+
+.featured-controls {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.featured-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--text);
+  background: transparent;
+  border-radius: 999px;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.featured-control:hover {
+  background: var(--surface-soft);
+  transform: translateY(-1px);
 }
 
 .featured-grid {
@@ -413,24 +496,6 @@ onBeforeUnmount(() => {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-}
-
-.featured-flow-mark {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  min-width: 48px;
-  padding: 6px 10px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.48);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-align: center;
-  backdrop-filter: blur(10px);
 }
 
 .featured-card img {
@@ -505,20 +570,32 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.86);
 }
 
-.featured-fade-move,
-.featured-fade-enter-active,
-.featured-fade-leave-active {
+.featured-forward-move,
+.featured-forward-enter-active,
+.featured-forward-leave-active,
+.featured-backward-move,
+.featured-backward-enter-active,
+.featured-backward-leave-active {
   transition:
     opacity 420ms ease,
     transform 420ms ease;
 }
 
-.featured-fade-enter-from {
+.featured-forward-leave-active,
+.featured-backward-leave-active {
+  position: absolute;
+  top: 0;
+  width: calc((100% - 28px) / 3);
+}
+
+.featured-forward-enter-from,
+.featured-backward-leave-to {
   opacity: 0;
   transform: translateX(42px);
 }
 
-.featured-fade-leave-to {
+.featured-forward-leave-to,
+.featured-backward-enter-from {
   opacity: 0;
   transform: translateX(-42px);
 }
@@ -817,6 +894,11 @@ onBeforeUnmount(() => {
 @media (max-width: 880px) {
   .featured-grid {
     grid-template-columns: 1fr;
+  }
+
+  .featured-forward-leave-active,
+  .featured-backward-leave-active {
+    width: 100%;
   }
 
   .featured-card {
