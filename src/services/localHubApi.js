@@ -200,6 +200,32 @@ function mapApiFestival(place, index = 0) {
   }
 }
 
+function mapFallbackFestivalToPlace(festival) {
+  return {
+    id: festival.id,
+    contentId: festival.contentId || festival.content_id,
+    name: festival.name,
+    category: festival.category || '축제공연행사',
+    district: festival.district || '서울',
+    address: festival.location || '주소 미제공',
+    rating: 4.5,
+    reviews: 300 + ((Number(festival.id) || 1) * 29) % 3600,
+    hours: festival.date || '일정 미제공',
+    price: '현장 확인',
+    type: 'festival',
+    x: 50,
+    y: 50,
+    image: festival.image || fallbackImageFor(festival),
+    summary: festival.summary || `${festival.name}은(는) 서울에서 열리는 축제공연행사입니다.`,
+    tags: [festival.category || '축제공연행사', festival.district].filter(Boolean),
+    longitude: null,
+    latitude: null,
+    eventStartDate: festival.startDate || null,
+    eventEndDate: festival.endDate || null,
+    eventPlace: festival.location || null,
+  }
+}
+
 async function requestJson(path, options = {}) {
   if (!API_BASE_URL || API_BASE_URL === 'mock') {
     throw new Error('Mock API mode')
@@ -432,8 +458,19 @@ export async function fetchPlacesPage({
 }
 
 export async function fetchPlaceById(id) {
-  const payload = await requestJson(`/places/${id}`)
-  return payload ? mapApiPlace(payload) : null
+  try {
+    const payload = await requestJson(`/places/${id}`)
+    return payload ? mapApiPlace(payload) : null
+  } catch {
+    const normalizedId = String(id)
+    const places = await loadApiPlaces()
+    const place = places.find((item) => String(item.id) === normalizedId)
+
+    if (place) return place
+
+    const festival = fallbackFestivals.find((item) => String(item.id) === normalizedId)
+    return festival ? mapFallbackFestivalToPlace(festival) : null
+  }
 }
 
 export async function fetchDashboardData() {
