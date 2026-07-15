@@ -139,29 +139,30 @@ function fitMapToPins() {
   const hasUserLocation = Number.isFinite(userLat) && Number.isFinite(userLng)
 
   if (hasUserLocation) {
-    // 1. 내 위치를 바운드에 포함
+    // 1. 기준점이 되는 '내 위치'를 먼저 포함합니다.
     bounds.extend(new kakaoMaps.value.LatLng(userLat, userLng))
 
-    // 2. 핀들을 내 위치와의 거리순으로 정렬
+    // 2. 내 위치 기준으로 가장 가까운 순서대로 핀들을 정렬합니다.
     const sortedPins = [...coordinatePins.value].sort((a, b) => {
       const distA = Math.pow(a.lat - userLat, 2) + Math.pow(a.lng - userLng, 2)
       const distB = Math.pow(b.lat - userLat, 2) + Math.pow(b.lng - userLng, 2)
       return distA - distB
     })
 
-    // 3. 가장 가까운 5개의 핀만 바운드 계산에 사용 (다른 핀들은 지도엔 있지만 화면 밖으로 밀려남)
-    const closestPins = sortedPins.slice(0, 5)
+    // 3. 가장 가까운 3개의 핀만 바운드(화면 영역) 계산에 넣습니다.
+    // (더 멀리 있는 핀들은 지도에는 그려져 있지만, 첫 화면에서는 안 보이고 드래그해야 보입니다.)
+    const closestPins = sortedPins.slice(0, 3)
     closestPins.forEach((pin) => {
       bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
     })
   } else {
-    // 4. 내 위치가 없을 때는 기존처럼 모든 핀을 포함
+    // 만약 내 위치 정보가 아직 없거나 가져오지 못했다면, 기본적으로 모든 핀이 다 보이게 맞춥니다.
     coordinatePins.value.forEach((pin) => {
       bounds.extend(new kakaoMaps.value.LatLng(pin.lat, pin.lng))
     })
   }
 
-  // 계산된 바운드로 지도 화면 이동
+  // 여백(Padding)을 48px 주어 화면 가장자리에 너무 붙지 않게 영역을 맞춥니다.
   map.value.setBounds(bounds, 48, 48, 48, 48)
 }
 
@@ -224,10 +225,26 @@ onMounted(async () => {
   }
 })
 
-watch([coordinatePins, () => props.userLocation?.lat, () => props.userLocation?.lng], renderOverlays, {
-  flush: 'post',
-})
-watch(locale, renderOverlays)
+// 1. 핀 목록이나 다국어(locale)가 변경될 때만 마커들을 새로 그립니다.
+watch([coordinatePins, locale], () => {
+  renderOverlays()
+}, { flush: 'post' })
+
+// 2. 사용자의 현재 위치가 감지되거나 변경되면, 지도를 즉시 가까운 곳 위주로 줌인합니다.
+watch(
+  () => [props.userLocation?.lat, props.userLocation?.lng],
+  ([newLat, newLng]) => {
+    const lat = Number(newLat)
+    const lng = Number(newLng)
+    
+    // 유효한 좌표가 들어왔을 때만 실행합니다.
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      renderLocationMarker()
+      fitMapToPins()
+    }
+  },
+  { flush: 'post', immediate: true }
+)
 
 onBeforeUnmount(() => {
   clearOverlays()
