@@ -3,8 +3,8 @@
     <div class="container community-container">
       <div class="section-title">
         <div>
-          <h1>현지인 여행 후기 게시판</h1>
-          <p>익명으로 작성되는 게시판입니다. 현지인이 남긴 여행 후기와 오늘 가기 좋은 장소를 함께 확인합니다.</p>
+          <h1>{{ t('community.title') }}</h1>
+          <p>{{ t('community.description') }}</p>
         </div>
       </div>
     </div>
@@ -14,12 +14,12 @@
       ref="pickSection"
       class="local-pick-section"
       :style="{ '--pick-scroll-distance': `${pickScrollDistance}px` }"
-      aria-label="현지인 Pick 관광지"
+      :aria-label="t('community.localPickAria')"
     >
       <div class="local-pick-sticky">
         <div class="local-pick-header">
           <div>
-            <span>{{ currentMonthLabel }} 현지인 Pick !</span>
+            <span>{{ t('community.monthPick', { month: currentMonthLabel }) }}</span>
           </div>
         </div>
 
@@ -39,7 +39,7 @@
               <img :src="pick.image" :alt="pick.name" draggable="false" />
               <div class="local-pick-card-body">
                 <div>
-                  <span>{{ pick.category }}</span>
+                  <span>{{ categoryLabel(pick.category) }}</span>
                   <span>{{ pick.district }}</span>
                 </div>
                 <h3>{{ pick.name }}</h3>
@@ -54,7 +54,7 @@
     <div class="container community-container board-content">
       <div class="search-row board-search">
         <Search :size="17" />
-        <input v-model="keyword" type="search" placeholder="게시글 제목 또는 내용 검색" />
+        <input v-model="keyword" type="search" :placeholder="t('community.searchPlaceholder')" />
       </div>
 
       <div class="chip-row">
@@ -66,7 +66,7 @@
           :class="{ active: activeCategory === category }"
           @click="activeCategory = category"
         >
-          {{ category }}
+          {{ categoryLabel(category) }}
         </button>
       </div>
 
@@ -74,7 +74,7 @@
         <article v-for="post in pagedPosts" :key="post.id" class="post-card card">
           <RouterLink :to="`/community/${post.id}`" class="post-main">
             <div>
-              <span class="badge">{{ post.category }}</span>
+              <span class="badge">{{ categoryLabel(post.category) }}</span>
               <time>{{ post.date }}</time>
             </div>
             <h2>{{ post.title }}</h2>
@@ -93,11 +93,11 @@
 
       <div v-if="filteredPosts.length === 0" class="empty-state panel">
         <MessageSquare :size="38" />
-        <p>검색 조건에 맞는 게시글이 없습니다.</p>
+        <p>{{ t('community.empty') }}</p>
       </div>
 
       <div v-if="pageCount > 1" class="pagination">
-        <button class="icon-btn" type="button" :disabled="page === 1" title="이전" @click="page--">
+        <button class="icon-btn" type="button" :disabled="page === 1" :title="t('common.previous')" @click="page--">
           <ChevronLeft :size="16" />
         </button>
         <button
@@ -110,7 +110,7 @@
         >
           {{ pageNumber }}
         </button>
-        <button class="icon-btn" type="button" :disabled="page === pageCount" title="다음" @click="page++">
+        <button class="icon-btn" type="button" :disabled="page === pageCount" :title="t('common.next')" @click="page++">
           <ChevronRight :size="16" />
         </button>
       </div>
@@ -121,6 +121,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   ChevronLeft,
   ChevronRight,
@@ -131,6 +132,7 @@ import {
 } from '@lucide/vue'
 import { fetchPlacesPage, fetchCommunityPosts } from '../services/localHubApi'
 
+const { locale, t, te } = useI18n()
 const keyword = ref('')
 const activeCategory = ref('전체')
 const page = ref(1)
@@ -144,7 +146,9 @@ const pickScrollDistance = ref(0)
 const pageSize = 4
 let pickResizeObserver = null
 
-const currentMonthLabel = computed(() => `${new Date().getMonth() + 1}월`)
+const currentMonthLabel = computed(() =>
+  new Intl.DateTimeFormat(locale.value, { month: 'long' }).format(new Date()),
+)
 
 const localPickCards = computed(() => localPickPlaces.value.slice(0, 6))
 
@@ -183,6 +187,11 @@ async function loadPosts() {
   } catch {
     posts.value = []
   }
+}
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
 }
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))

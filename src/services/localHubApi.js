@@ -7,6 +7,7 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const PAGE_SIZE = 100
+const CHAT_SESSION_STORAGE_KEY = 'local-in-chat-session-id'
 export const placeCategoryFilters = [
   { label: '전체', contentTypeId: null },
   { label: '관광지', contentTypeId: 12 },
@@ -433,14 +434,113 @@ export async function searchAll(keyword = '') {
   }
 }
 
-export async function askAssistant(message) {
+const chatFallbackAnswers = {
+  ko: {
+    festival:
+      '서울 축제공연행사 데이터는 백엔드 data/서울 폴더에서 불러오고 있습니다. 축제 화면에서 전체 행사 목록을 확인해보세요.',
+    budget:
+      '서울 3일 여행은 중급 숙박 기준 1인 1일 15만-25만원 정도를 잡으면 무난합니다. 대중교통은 T-money 카드, 실내 명소는 비 오는 날 일정으로 남겨두면 좋습니다.',
+    transport:
+      '서울은 지하철 동선이 가장 안정적입니다. 공항에서 짐이 많으면 공항버스, 시내 이동은 T-money 카드를 추천합니다.',
+    community:
+      '커뮤니티에는 경복궁 동문 사진 스팟, 인사동 찻집, 북한산 둘레길 후기가 있습니다. 게시판 검색창에서 사진, 인사동, 북한산 같은 키워드로 찾아보세요.',
+    default:
+      '서울 첫 방문이라면 경복궁, 인사동, DDP, 한강 일정을 묶는 코스를 추천합니다. 탐색 화면의 백엔드 연동 데이터에서 지역명과 카테고리로 찾아볼 수 있어요.',
+  },
+  en: {
+    festival:
+      'Seoul festival data is loaded from the backend data folder. Open the festival screen to browse the full event list.',
+    budget:
+      'For a 3-day Seoul trip, a mid-range plan usually works around KRW 150,000-250,000 per person per day. Use a T-money card for transit and keep indoor spots for rainy days.',
+    transport:
+      'The subway is the most reliable way to move around Seoul. If you have heavy luggage from the airport, an airport bus is often worth it.',
+    community:
+      'The community includes tips for Gyeongbokgung photo spots, Insadong tea houses, and Bukhansan walking routes. Try searching photo, Insadong, or Bukhansan.',
+    default:
+      'For a first Seoul visit, combine Gyeongbokgung, Insadong, DDP, and the Han River. You can search by district and category on the Explore screen.',
+  },
+  zh: {
+    festival:
+      '首尔庆典活动数据会从后端数据目录加载。请在庆典页面查看完整活动列表。',
+    budget:
+      '首尔 3 日游以中等住宿为基准，每人每天约 15万-25万韩元比较稳妥。市内交通推荐使用 T-money，雨天可安排室内景点。',
+    transport:
+      '在首尔移动，地铁通常最稳定。从机场出发如果行李较多，机场巴士会更方便。',
+    community:
+      '社区中有景福宫拍照点、仁寺洞茶馆和北汉山路线等评价。可以搜索照片、仁寺洞、北汉山等关键词。',
+    default:
+      '第一次来首尔，可以把景福宫、仁寺洞、DDP 和汉江安排成一条路线。在探索页面可按地区和类别查找地点。',
+  },
+  ja: {
+    festival:
+      'ソウルの祭り・公演データはバックエンドのデータフォルダから読み込まれます。祭り画面で全イベント一覧を確認してください。',
+    budget:
+      'ソウル3日旅行は中級宿泊を基準に、1人1日15万〜25万ウォンほどを見込むと安心です。移動はT-money、雨の日は屋内スポットを残しておくと便利です。',
+    transport:
+      'ソウル市内の移動は地下鉄が最も安定しています。空港から荷物が多い場合は空港バスも便利です。',
+    community:
+      'コミュニティには景福宮の写真スポット、仁寺洞の茶屋、北漢山ルートのレビューがあります。写真、仁寺洞、北漢山などで検索してみてください。',
+    default:
+      '初めてのソウルなら、景福宮、仁寺洞、DDP、漢江を組み合わせるコースがおすすめです。探索画面で地域名とカテゴリから探せます。',
+  },
+}
+
+function chatSessionId() {
+  const storedSessionId = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY)
+  if (storedSessionId) return storedSessionId
+
+  const nextSessionId = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `local-in-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  window.localStorage.setItem(CHAT_SESSION_STORAGE_KEY, nextSessionId)
+  return nextSessionId
+}
+
+function normalizeChatOptions(options) {
+  if (typeof options === 'string') {
+    return {
+      locale: options,
+      history: [],
+      filters: {},
+    }
+  }
+
+  return {
+    locale: options?.locale || 'ko',
+    history: Array.isArray(options?.history) ? options.history : [],
+    filters: options?.filters || {},
+  }
+}
+
+function normalizeChatHistory(history) {
+  return history
+    .filter((message) => ['system', 'user', 'assistant'].includes(message.role) && message.text?.trim())
+    .slice(-8)
+    .map((message) => ({
+      role: message.role,
+      content: message.text.trim(),
+    }))
+}
+
+export async function askAssistant(message, options = {}) {
+  const { locale, history, filters } = normalizeChatOptions(options)
   const text = message.toLowerCase()
+  const answers = chatFallbackAnswers[locale] || chatFallbackAnswers.ko
 
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({
+        session_id: chatSessionId(),
+        message,
+        history: normalizeChatHistory(history),
+        filters: {
+          ...filters,
+          locale,
+        },
+      }),
     })
     if (response.ok) {
       return response.json()
@@ -450,37 +550,22 @@ export async function askAssistant(message) {
   }
 
   if (text.includes('축제') || text.includes('festival') || text.includes('7월')) {
-    return {
-      answer:
-        '서울 축제공연행사 데이터는 백엔드 data/서울 폴더에서 불러오고 있습니다. 축제 화면에서 전체 행사 목록을 확인해보세요.',
-    }
+    return { answer: answers.festival }
   }
 
-  if (text.includes('예산') || text.includes('budget') || text.includes('비용')) {
-    return {
-      answer:
-        '서울 3일 여행은 중급 숙박 기준 1인 1일 15만-25만원 정도를 잡으면 무난합니다. 대중교통은 T-money 카드, 실내 명소는 비 오는 날 일정으로 남겨두면 좋습니다.',
-    }
+  if (text.includes('예산') || text.includes('budget') || text.includes('비용') || text.includes('预算') || text.includes('予算')) {
+    return { answer: answers.budget }
   }
 
-  if (text.includes('교통') || text.includes('transport') || text.includes('지하철')) {
-    return {
-      answer:
-        '서울은 지하철 동선이 가장 안정적입니다. 공항에서 짐이 많으면 공항버스, 시내 이동은 T-money 카드를 추천합니다.',
-    }
+  if (text.includes('교통') || text.includes('transport') || text.includes('지하철') || text.includes('交通') || text.includes('地下鉄')) {
+    return { answer: answers.transport }
   }
 
-  if (text.includes('후기') || text.includes('게시글') || text.includes('사진')) {
-    return {
-      answer:
-        '커뮤니티에는 경복궁 동문 사진 스팟, 인사동 찻집, 북한산 둘레길 후기가 있습니다. 게시판 검색창에서 사진, 인사동, 북한산 같은 키워드로 찾아보세요.',
-    }
+  if (text.includes('후기') || text.includes('게시글') || text.includes('사진') || text.includes('评价') || text.includes('レビュー')) {
+    return { answer: answers.community }
   }
 
-  return {
-    answer:
-      '서울 첫 방문이라면 경복궁, 인사동, DDP, 한강 일정을 묶는 코스를 추천합니다. 탐색 화면의 백엔드 연동 데이터에서 지역명과 카테고리로 찾아볼 수 있어요.',
-  }
+  return { answer: answers.default }
 }
 
 export { fallbackCategories }

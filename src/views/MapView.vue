@@ -2,8 +2,8 @@
   <section class="section">
     <div class="container">
       <div class="page-title">
-        <h1>서울 현지 추천 지도</h1>
-        <p>동네별 추천 장소와 맛집, 축제를 지도에서 한 번에 확인합니다.</p>
+        <h1>{{ t('map.title') }}</h1>
+        <p>{{ t('map.description') }}</p>
       </div>
 
       <div class="map-layout">
@@ -21,7 +21,7 @@
                 {{ filter.label }}
               </button>
             </div>
-            <span class="count-pill">{{ filteredPins.length.toLocaleString() }}개 표시</span>
+            <span class="count-pill">{{ t('common.itemsShown', { count: filteredPins.length.toLocaleString() }) }}</span>
           </div>
           <MapPanel :pins="filteredPins" @select="handleSelect" />
         </div>
@@ -29,23 +29,23 @@
         <aside class="map-side">
           <div class="pin-detail panel">
             <span v-if="selected" class="badge">{{ labelFor(selected.type) }}</span>
-            <h2>{{ selected ? selected.name : '선택한 핀 정보' }}</h2>
+            <h2>{{ selected ? selected.name : t('map.selectedTitle') }}</h2>
             <p v-if="!selected">
-              지도 위 핀을 선택하면 장소 정보와 동네 위치를 확인할 수 있습니다.
+              {{ t('map.selectHelp') }}
             </p>
             <template v-else>
-              <p>{{ selected.summary || '서울 장소 좌표 데이터입니다.' }}</p>
+              <p>{{ selected.summary || t('map.fallbackSummary') }}</p>
               <dl class="pin-meta">
                 <div>
-                  <dt>주소</dt>
-                  <dd>{{ selected.address || '주소 미제공' }}</dd>
+                  <dt>{{ t('map.address') }}</dt>
+                  <dd>{{ selected.address || t('map.noAddress') }}</dd>
                 </div>
                 <div>
-                  <dt>행정동</dt>
+                  <dt>{{ t('map.district') }}</dt>
                   <dd>{{ regionLabel }}</dd>
                 </div>
                 <div>
-                  <dt>좌표</dt>
+                  <dt>{{ t('map.coordinate') }}</dt>
                   <dd>{{ coordinateLabel }}</dd>
                 </div>
               </dl>
@@ -60,6 +60,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
 import { mapPins as fallbackMapPins } from '../data/localhub'
@@ -67,6 +68,7 @@ import { fetchAdministrativeDistrict, formatAdministrativeDistrict } from '../se
 import { fetchMapPins } from '../services/localHubApi'
 
 const activeFilter = ref('all')
+const { t } = useI18n()
 const selected = ref(null)
 const selectedRegion = ref(null)
 const selectedRegionError = ref('')
@@ -74,15 +76,15 @@ const selectedRegionLoading = ref(false)
 const mapPins = ref([...fallbackMapPins])
 let regionRequestId = 0
 
-const filters = [
-  { id: 'all', label: '전체' },
-  { id: 'attraction', label: '관광지' },
-  { id: 'restaurant', label: '맛집' },
-  { id: 'nature', label: '자연' },
-  { id: 'accommodation', label: '숙박' },
-  { id: 'festival', label: '축제' },
-  { id: 'shopping', label: '쇼핑' },
-]
+const filters = computed(() => [
+  { id: 'all', label: t('categories.all') },
+  { id: 'attraction', label: t('categories.attraction') },
+  { id: 'restaurant', label: t('categories.restaurant') },
+  { id: 'nature', label: t('categories.nature') },
+  { id: 'accommodation', label: t('categories.accommodation') },
+  { id: 'festival', label: t('categories.festival') },
+  { id: 'shopping', label: t('categories.shopping') },
+])
 
 const filteredPins = computed(() =>
   activeFilter.value === 'all'
@@ -91,7 +93,7 @@ const filteredPins = computed(() =>
 )
 
 const stats = computed(() =>
-  filters.slice(1).map((filter) => ({
+  filters.value.slice(1).map((filter) => ({
     ...filter,
     count: mapPins.value.filter((pin) => pin.type === filter.id).length,
   })),
@@ -117,20 +119,20 @@ const statBars = computed(() => {
 })
 
 const regionLabel = computed(() => {
-  if (selectedRegionLoading.value) return '조회 중'
+  if (selectedRegionLoading.value) return t('map.regionLoading')
   if (selectedRegion.value) return formatAdministrativeDistrict(selectedRegion.value)
   if (selectedRegionError.value) return selectedRegionError.value
-  return '행정동 정보 없음'
+  return t('map.noRegion')
 })
 
 const coordinateLabel = computed(() =>
   selected.value && Number.isFinite(selected.value.lat) && Number.isFinite(selected.value.lng)
     ? `${selected.value.lat.toFixed(5)}, ${selected.value.lng.toFixed(5)}`
-    : '좌표 미제공',
+    : t('map.noCoordinate'),
 )
 
 function labelFor(type) {
-  return filters.find((filter) => filter.id === type)?.label || type
+  return filters.value.find((filter) => filter.id === type)?.label || type
 }
 
 async function handleSelect(pin) {
@@ -146,10 +148,10 @@ async function handleSelect(pin) {
     if (requestId !== regionRequestId) return
 
     selectedRegion.value = region
-    selectedRegionError.value = region ? '' : '조회 결과 없음'
+    selectedRegionError.value = region ? '' : t('map.noRegionResult')
   } catch {
     if (requestId !== regionRequestId) return
-    selectedRegionError.value = 'Kakao API 설정 필요'
+    selectedRegionError.value = t('map.kakaoRequired')
   } finally {
     if (requestId === regionRequestId) {
       selectedRegionLoading.value = false

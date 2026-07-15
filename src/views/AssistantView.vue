@@ -2,8 +2,8 @@
   <section class="section">
     <div class="container assistant-container">
       <div class="page-title">
-        <h1>AI 여행 비서</h1>
-        <p>제공 JSON 데이터와 커뮤니티 후기를 근거로 답변하는 FastAPI `/api/chat` 화면입니다.</p>
+        <h1>{{ t('assistant.title') }}</h1>
+        <p>{{ t('assistant.description') }}</p>
       </div>
 
       <div class="assistant-layout">
@@ -12,7 +12,7 @@
             <div class="ai-mark"><Bot :size="20" /></div>
             <div>
               <strong>Local-In AI</strong>
-              <span>온라인</span>
+              <span>{{ t('common.online') }}</span>
             </div>
           </header>
           <ChatConversation :messages="messages" :loading="loading" @send="send" />
@@ -20,19 +20,19 @@
 
         <aside class="assistant-side">
           <div class="panel prompt-panel">
-            <h2>추천 질문</h2>
-            <button v-for="item in aiSuggestions" :key="item" type="button" @click="send(item)">
+            <h2>{{ t('assistant.recommendedPrompts') }}</h2>
+            <button v-for="item in suggestedPrompts" :key="item" type="button" @click="send(item)">
               {{ item }}
             </button>
           </div>
           <div class="panel prompt-panel gradient">
             <Sparkles :size="22" />
-            <h2>응답 범위</h2>
+            <h2>{{ t('assistant.scope') }}</h2>
             <ul>
-              <li>현지 추천 장소</li>
-              <li>축제 일정</li>
-              <li>교통과 예산</li>
-              <li>커뮤니티 후기 검색</li>
+              <li>{{ t('assistant.scopePlaces') }}</li>
+              <li>{{ t('assistant.scopeFestivals') }}</li>
+              <li>{{ t('assistant.scopeTransport') }}</li>
+              <li>{{ t('assistant.scopeCommunity') }}</li>
             </ul>
           </div>
         </aside>
@@ -42,28 +42,48 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Bot, Sparkles } from '@lucide/vue'
 import ChatConversation from '../components/ChatConversation.vue'
-import { aiSuggestions } from '../data/localhub'
 import { askAssistant } from '../services/localHubApi'
 
-const now = () => new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+const { locale, t } = useI18n()
+const now = () => new Date().toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
+const suggestedPrompts = computed(() => [
+  t('assistant.quickLocal'),
+  t('assistant.quickFestival'),
+  t('assistant.quickBudget'),
+])
 
 const loading = ref(false)
 const messages = ref([
   {
     role: 'assistant',
-    text: '안녕하세요. Local-In AI입니다. 서울의 현지 추천 장소, 축제, 숙박, 커뮤니티 후기 중 무엇을 찾고 있나요?',
+    text: t('assistant.greeting'),
     time: now(),
   },
 ])
 
+watch(locale, () => {
+  if (messages.value.length === 1 && messages.value[0].role === 'assistant') {
+    messages.value[0] = {
+      ...messages.value[0],
+      text: t('assistant.greeting'),
+      time: now(),
+    }
+  }
+})
+
 async function send(text) {
   if (loading.value) return
+  const history = [...messages.value]
   messages.value.push({ role: 'user', text, time: now() })
   loading.value = true
-  const response = await askAssistant(text)
+  const response = await askAssistant(text, {
+    locale: locale.value,
+    history,
+  })
   messages.value.push({ role: 'assistant', text: response.answer, time: now() })
   loading.value = false
 }

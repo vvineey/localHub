@@ -2,16 +2,16 @@
   <section class="section">
     <div class="container">
       <div class="page-title">
-        <h1>서울 여행정보 탐색</h1>
-        <p>{{ totalPlaces.toLocaleString() }}개의 장소가 검색되었습니다.</p>
+        <h1>{{ t('explore.title') }}</h1>
+        <p>{{ t('explore.count', { count: totalPlaces.toLocaleString() }) }}</p>
       </div>
 
       <div class="filter-row">
         <label class="search-row">
           <Search :size="17" />
-          <input v-model="keyword" type="search" placeholder="장소명, 지역, 태그 검색" />
+          <input v-model="keyword" type="search" :placeholder="t('explore.searchPlaceholder')" />
         </label>
-        <div class="chip-row" aria-label="카테고리 필터">
+        <div class="chip-row" :aria-label="t('explore.categoryFilter')">
           <button
             v-for="category in categoryFilters"
             :key="category.label"
@@ -20,27 +20,27 @@
             :class="{ active: activeCategory === category.label }"
             @click="activeCategory = category.label"
           >
-            {{ category.label }}
+            {{ categoryLabel(category.label) }}
           </button>
         </div>
       </div>
 
       <div v-if="isLoading" class="empty-state panel">
         <Search :size="38" />
-        <p>백엔드 여행정보를 불러오는 중입니다.</p>
+        <p>{{ t('explore.loading') }}</p>
       </div>
       <div v-else-if="places.length" class="grid grid-3">
         <PlaceCard v-for="place in places" :key="place.id" :place="place" />
       </div>
       <div v-else class="empty-state panel">
         <Search :size="38" />
-        <p>조건에 맞는 여행정보가 없습니다.</p>
+        <p>{{ t('explore.empty') }}</p>
       </div>
 
       <div v-if="pageCount > 1" class="explore-pagination">
         <p>{{ rangeLabel }}</p>
         <div class="pagination-controls">
-          <button class="icon-btn" type="button" :disabled="page === 1 || isLoading" title="이전" @click="page--">
+          <button class="icon-btn" type="button" :disabled="page === 1 || isLoading" :title="t('common.previous')" @click="page--">
             <ChevronLeft :size="16" />
           </button>
           <button
@@ -58,7 +58,7 @@
             class="icon-btn"
             type="button"
             :disabled="page === pageCount || isLoading"
-            title="다음"
+            :title="t('common.next')"
             @click="page++"
           >
             <ChevronRight :size="16" />
@@ -72,6 +72,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight, Search } from '@lucide/vue'
 import PlaceCard from '../components/PlaceCard.vue'
 import {
@@ -80,6 +81,7 @@ import {
 } from '../services/localHubApi'
 
 const route = useRoute()
+const { t, te } = useI18n()
 const keyword = ref(String(route.query.q || ''))
 const activeCategory = ref('전체')
 const categoryFilters = placeCategoryFilters
@@ -108,11 +110,19 @@ const visiblePages = computed(() => {
 })
 
 const rangeLabel = computed(() => {
-  if (!totalPlaces.value) return '0개 표시'
+  if (!totalPlaces.value) return t('common.zeroShown')
   const start = (page.value - 1) * pageSize + 1
   const end = Math.min(page.value * pageSize, totalPlaces.value)
-  return `${start.toLocaleString()}-${end.toLocaleString()}개 표시`
+  return t('common.rangeShown', {
+    start: start.toLocaleString(),
+    end: end.toLocaleString(),
+  })
 })
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
+}
 
 async function loadPlaces() {
   const requestId = ++placesRequestId

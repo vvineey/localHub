@@ -1,11 +1,11 @@
 <template>
   <section v-if="post" class="section">
     <div class="container post-detail-container">
-      <RouterLink class="back-link" to="/community"><ArrowLeft :size="16" /> 게시판으로</RouterLink>
+      <RouterLink class="back-link" to="/community"><ArrowLeft :size="16" /> {{ t('community.back') }}</RouterLink>
 
       <article class="post-detail panel">
         <header>
-          <span class="badge">{{ post.category }}</span>
+          <span class="badge">{{ categoryLabel(post.category) }}</span>
           <h1>{{ post.title }}</h1>
           <div class="meta-line">
             <span>{{ post.date }}</span>
@@ -20,20 +20,20 @@
             {{ post.likes }}
           </button>
           <div>
-            <button class="btn btn-ghost" type="button" @click="requestAction('edit')">수정</button>
-            <button class="btn btn-ghost danger" type="button" @click="requestAction('delete')">삭제</button>
+            <button class="btn btn-ghost" type="button" @click="requestAction('edit')">{{ t('common.edit') }}</button>
+            <button class="btn btn-ghost danger" type="button" @click="requestAction('delete')">{{ t('common.delete') }}</button>
           </div>
         </footer>
       </article>
 
       <section class="comments panel">
-        <h2>댓글</h2>
+        <h2>{{ t('community.comments') }}</h2>
         <article v-if="comments.length === 0" class="empty-comment">
-          댓글이 없습니다. 첫 댓글을 남겨보세요.
+          {{ t('community.noComments') }}
         </article>
         <article v-for="comment in comments" :key="comment.id" class="comment-item">
-          <strong>{{ comment.author_name || '익명' }}</strong>
-          <time>{{ comment.created_at ?? comment.date ?? '날짜 없음' }}</time>
+          <strong>{{ comment.author_name || t('community.anonymous') }}</strong>
+          <time>{{ comment.created_at ?? comment.date ?? t('community.noDate') }}</time>
           <p>{{ comment.content }}</p>
         </article>
 
@@ -41,28 +41,28 @@
           <input
             v-model="newComment.author_name"
             type="text"
-            placeholder="작성자 이름 (선택)"
+            :placeholder="t('community.commentAuthorPlaceholder')"
           />
           <textarea
             v-model="newComment.content"
             rows="3"
-            placeholder="댓글을 남겨보세요."
+            :placeholder="t('community.commentPlaceholder')"
             required
           />
           <input
             v-model="newComment.password"
             type="password"
-            placeholder="댓글 비밀번호"
+            :placeholder="t('community.commentPasswordPlaceholder')"
             required
           />
-          <button class="btn btn-primary" type="submit">댓글 작성</button>
+          <button class="btn btn-primary" type="submit">{{ t('community.writeComment') }}</button>
         </form>
       </section>
     </div>
 
     <PasswordModal
       v-if="modalOpen"
-      :title="pendingAction === 'delete' ? '게시글 삭제' : '게시글 수정'"
+      :title="pendingAction === 'delete' ? t('community.deletePost') : t('community.editPost')"
       :error="passwordError"
       @close="closeModal"
       @confirm="confirmPassword"
@@ -74,6 +74,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Eye, Heart, MessageSquare } from '@lucide/vue'
 import PasswordModal from '../components/PasswordModal.vue'
 import NotFoundView from './NotFoundView.vue'
@@ -94,6 +95,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const { t, te } = useI18n()
 const modalOpen = ref(false)
 const pendingAction = ref(null)
 const passwordError = ref(false)
@@ -109,6 +111,11 @@ async function loadPost() {
   } catch {
     post.value = null
   }
+}
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
 }
 
 async function increaseViewCount() {

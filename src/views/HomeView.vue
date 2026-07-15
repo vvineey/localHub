@@ -14,13 +14,13 @@
       </div>
       <div class="hero-overlay"></div>
       <div class="hero-content container">
-        <span class="eyebrow"><Sparkles :size="15" /> 현지인의 추천 장소로 시작하는 서울 여행</span>
+        <span class="eyebrow"><Sparkles :size="15" /> {{ t('home.eyebrow') }}</span>
         <h1>Local-In</h1>
-        <p>익숙한 코스보다 오늘 머물기 좋은 동네와 생생한 후기를 먼저 만나보세요.</p>
+        <p>{{ t('home.heroCopy') }}</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
-          <input v-model="keyword" type="search" placeholder="동네, 분위기, 현지 추천 검색" />
-          <button class="btn btn-primary" type="submit">검색</button>
+          <input v-model="keyword" type="search" :placeholder="t('home.searchPlaceholder')" />
+          <button class="btn btn-primary" type="submit">{{ t('common.search') }}</button>
         </form>
       </div>
     </section>
@@ -41,7 +41,7 @@
       <div class="container popular-showcase">
         <aside class="popular-copy" aria-live="polite">
           <div class="popular-copy-inner">
-            <div class="popular-progress" aria-label="오늘의 현지 추천 위치">
+            <div class="popular-progress" :aria-label="t('home.progressLabel')">
               <span
                 v-for="(place, index) in showcasePlaces"
                 :key="place.id"
@@ -53,8 +53,8 @@
               <span class="popular-count">
                 {{ formattedActiveShowcaseIndex }} / {{ formattedShowcaseTotal }}
               </span>
-              <span class="popular-kicker">LOCAL PICK</span>
-              <h3>현지인이 추천하는<br />오늘의 관광지</h3>
+              <span class="popular-kicker">{{ t('home.localPick') }}</span>
+              <h3 v-html="t('home.todayTitle')"></h3>
               <Transition name="place-chip" mode="out-in">
                 <p :key="activeShowcasePlace.id" class="popular-place-name">
                   <span>{{ activeShowcasePlace.name }}</span>
@@ -66,7 +66,7 @@
                 <span><Star :size="16" fill="currentColor" /> {{ activeShowcasePlace.rating }}</span>
               </div>
               <RouterLink class="btn btn-secondary" to="/explore">
-                전체 보기 <ArrowRight :size="16" />
+                {{ t('common.viewAll') }} <ArrowRight :size="16" />
               </RouterLink>
             </div>
           </div>
@@ -84,7 +84,7 @@
             <RouterLink class="popular-visual-link" :to="`/places/${place.id}`">
               <img :src="place.image" :alt="place.name" loading="lazy" />
               <div class="popular-visual-overlay">
-                <span>{{ place.category }}</span>
+                <span>{{ categoryLabel(place.category) }}</span>
                 <strong>{{ place.name }}</strong>
               </div>
             </RouterLink>
@@ -96,14 +96,13 @@
     <section class="section split-band">
       <div class="container split-layout">
         <div>
-          <span class="badge green">동네별 큐레이션</span>
-          <h2>현지인의 추천 장소를 지도 위에서 자연스럽게 이어보세요</h2>
+          <span class="badge green">{{ t('home.neighborhoodCuration') }}</span>
+          <h2>{{ t('home.mapTitle') }}</h2>
           <p>
-            카페, 산책길, 축제, 숙소를 지역별로 묶어 오늘 일정에 맞는 이동 동선을 빠르게
-            확인할 수 있습니다.
+            {{ t('home.mapCopy') }}
           </p>
           <RouterLink class="btn btn-primary" to="/map">
-            지도에서 보기 <Map :size="16" />
+            {{ t('home.viewOnMap') }} <Map :size="16" />
           </RouterLink>
         </div>
         <MapPanel :pins="homeMapPins.slice(0, 7)" @select="selectedPin = $event" />
@@ -115,10 +114,10 @@
         <div>
           <div class="section-title compact">
             <div>
-              <h2>이번 달 동네 축제</h2>
-              <p>지금 가기 좋은 서울 행사를 골라봅니다.</p>
+              <h2>{{ t('home.monthlyFestival') }}</h2>
+              <p>{{ t('home.monthlyFestivalCopy') }}</p>
             </div>
-            <RouterLink class="btn btn-ghost" to="/festivals">캘린더</RouterLink>
+            <RouterLink class="btn btn-ghost" to="/festivals">{{ t('home.calendar') }}</RouterLink>
           </div>
           <div class="festival-list">
             <RouterLink
@@ -139,8 +138,8 @@
         <div>
           <div class="section-title compact">
             <div>
-              <h2>현지 추천 지표</h2>
-              <p>장소 유형과 후기 흐름을 한눈에 봅니다.</p>
+              <h2>{{ t('home.localMetrics') }}</h2>
+              <p>{{ t('home.localMetricsCopy') }}</p>
             </div>
           </div>
           <StatBars :items="barItems" />
@@ -153,6 +152,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowRight, CalendarDays, Map, MapPin, MessageCircle, Search, Sparkles, Star, Users } from '@lucide/vue'
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
@@ -161,6 +161,7 @@ import { fetchFestivals, fetchMapPins, fetchPlaces, fetchCommunityPosts } from '
 
 const HERO_SLIDE_INTERVAL_MS = 2000
 
+const { t, te } = useI18n()
 const router = useRouter()
 const keyword = ref('')
 const selectedPin = ref(null)
@@ -198,32 +199,32 @@ const heroImages = [
 ]
 
 const stats = computed(() => [
-  { label: '현지 추천 장소', value: homePlaces.value.length.toLocaleString(), icon: Map },
-  { label: '동네 축제 일정', value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
-  { label: '여행자 후기', value: communityPostsCount.value.toLocaleString(), icon: Users },
-  { label: 'AI 큐레이션', value: 5, icon: MessageCircle },
+  { label: t('home.statsPlaces'), value: homePlaces.value.length.toLocaleString(), icon: Map },
+  { label: t('home.statsFestivals'), value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
+  { label: t('home.statsReviews'), value: communityPostsCount.value.toLocaleString(), icon: Users },
+  { label: t('home.statsAi'), value: 5, icon: MessageCircle },
 ])
 
 const barItems = computed(() => [
   {
-    label: '추천 장소',
+    label: t('home.barPlaces'),
     value: homePlaces.value.filter((item) => item.type === 'attraction').length,
     percent: 84,
     color: '#2563eb',
   },
   {
-    label: '자연/산책',
+    label: t('home.barNature'),
     value: homePlaces.value.filter((item) => item.type === 'nature').length,
     percent: 48,
     color: '#10b981',
   },
   {
-    label: '숙박',
+    label: t('home.barAccommodation'),
     value: homePlaces.value.filter((item) => item.type === 'accommodation').length,
     percent: 32,
     color: '#06b6d4',
   },
-  { label: '후기', value: communityPostsCount.value.toLocaleString(), percent: 68, color: '#f59e0b' },
+  { label: t('home.barReviews'), value: communityPostsCount.value.toLocaleString(), percent: 68, color: '#f59e0b' },
 ])
 
 const showcasePlaces = computed(() => homePlaces.value.slice(0, 3))
@@ -234,6 +235,11 @@ const formattedActiveShowcaseIndex = computed(() =>
   String(activeShowcaseIndex.value + 1).padStart(2, '0'),
 )
 const formattedShowcaseTotal = computed(() => String(showcasePlaces.value.length).padStart(2, '0'))
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
+}
 
 function setShowcaseCardRef(element, index) {
   if (element) {

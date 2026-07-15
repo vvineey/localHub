@@ -13,15 +13,15 @@
         </div>
       </article>
       <article v-if="loading" class="message assistant">
-        <div class="bubble typing" aria-label="AI 응답 작성 중">
+        <div class="bubble typing" :aria-label="t('assistant.typing')">
           <span></span><span></span><span></span>
         </div>
       </article>
     </div>
 
     <form class="chat-input" @submit.prevent="submit">
-      <input v-model="draft" type="text" placeholder="서울 여행에 대해 질문하기" />
-      <button class="icon-btn send" type="submit" :disabled="!draft.trim() || loading" aria-label="전송" title="전송">
+      <input v-model="draft" type="text" :placeholder="t('assistant.inputPlaceholder')" />
+      <button class="icon-btn send" type="submit" :disabled="!draft.trim() || loading" :aria-label="t('assistant.send')" :title="t('assistant.send')">
         <Send :size="16" />
       </button>
     </form>
@@ -30,7 +30,10 @@
 
 <script setup>
 import { nextTick, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Send } from '@lucide/vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   messages: {

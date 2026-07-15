@@ -3,13 +3,13 @@
     <div class="modal-backdrop" role="presentation" @click.self="$emit('close')">
       <form class="modal-panel" @submit.prevent="confirm">
         <div class="modal-icon"><LockKeyhole :size="20" /></div>
-        <h2>{{ title }}</h2>
-        <p>작성 시 등록한 수정용 비밀번호를 입력하세요.</p>
-        <input v-model="password" type="password" placeholder="비밀번호" autofocus />
-        <p v-if="error" class="error">비밀번호가 일치하지 않습니다.</p>
+        <h2>{{ title || t('modal.defaultTitle') }}</h2>
+        <p>{{ t('modal.description') }}</p>
+        <input v-model="password" type="password" :placeholder="t('common.password')" autofocus />
+        <p v-if="error" class="error">{{ t('modal.mismatch') }}</p>
         <div class="modal-actions">
-          <button class="btn btn-ghost" type="button" @click="$emit('close')">취소</button>
-          <button class="btn btn-primary" type="submit">확인</button>
+          <button class="btn btn-ghost" type="button" @click="$emit('close')">{{ t('common.cancel') }}</button>
+          <button class="btn btn-primary" type="submit">{{ t('common.confirm') }}</button>
         </div>
       </form>
     </div>
@@ -18,12 +18,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { LockKeyhole } from '@lucide/vue'
+
+const { t } = useI18n()
 
 defineProps({
   title: {
     type: String,
-    default: '비밀번호 확인',
+    default: '',
   },
   error: {
     type: Boolean,

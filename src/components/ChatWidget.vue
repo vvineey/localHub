@@ -1,12 +1,12 @@
 <template>
-  <aside v-if="$route.name !== 'assistant'" class="chat-widget" aria-label="Local-In AI 채팅 위젯">
+  <aside v-if="$route.name !== 'assistant'" class="chat-widget" :aria-label="t('assistant.chatTitle')">
     <div v-if="open" class="widget-panel">
       <div class="widget-header">
         <div>
           <strong>Local-In AI</strong>
-          <span>서울 현지 여행 비서</span>
+          <span>{{ t('assistant.widgetSubtitle') }}</span>
         </div>
-        <button type="button" aria-label="채팅 닫기" title="닫기" @click="open = false">
+        <button type="button" :aria-label="t('assistant.closeChat')" :title="t('assistant.closeChat')" @click="open = false">
           <X :size="17" />
         </button>
       </div>
@@ -22,8 +22,8 @@
       class="widget-button"
       type="button"
       :aria-expanded="open"
-      aria-label="AI 채팅 열기"
-      title="AI 채팅"
+      :aria-label="t('assistant.openChat')"
+      :title="t('assistant.chatTitle')"
       @click="open = !open"
     >
       <X v-if="open" :size="22" />
@@ -34,28 +34,48 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { MessageCircle, X } from '@lucide/vue'
 import ChatConversation from './ChatConversation.vue'
 import { askAssistant } from '../services/localHubApi'
 
-const now = () => new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+const { locale, t } = useI18n()
+const now = () => new Date().toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
 
-const quickPrompts = ['현지 추천', '7월 축제', '여행 예산']
+const quickPrompts = computed(() => [
+  t('assistant.quickLocal'),
+  t('assistant.quickFestival'),
+  t('assistant.quickBudget'),
+])
 const open = ref(false)
 const loading = ref(false)
 const messages = ref([
   {
     role: 'assistant',
-    text: '안녕하세요. 서울 현지 추천 장소, 축제, 숙박, 커뮤니티 후기를 기반으로 여행 질문에 답해드릴게요.',
+    text: t('assistant.widgetGreeting'),
     time: now(),
   },
 ])
 
+watch(locale, () => {
+  if (messages.value.length === 1 && messages.value[0].role === 'assistant') {
+    messages.value[0] = {
+      ...messages.value[0],
+      text: t('assistant.widgetGreeting'),
+      time: now(),
+    }
+  }
+})
+
 async function send(text) {
+  const history = [...messages.value]
   messages.value.push({ role: 'user', text, time: now() })
   loading.value = true
-  const response = await askAssistant(text)
+  const response = await askAssistant(text, {
+    locale: locale.value,
+    history,
+  })
   messages.value.push({ role: 'assistant', text: response.answer, time: now() })
   loading.value = false
 }

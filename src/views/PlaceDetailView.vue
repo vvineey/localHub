@@ -2,11 +2,11 @@
   <section class="section" v-if="place">
     <div class="container detail-layout">
       <div>
-        <RouterLink class="back-link" to="/explore"><ArrowLeft :size="16" /> 탐색으로</RouterLink>
+        <RouterLink class="back-link" to="/explore"><ArrowLeft :size="16" /> {{ t('place.backToExplore') }}</RouterLink>
         <article class="place-detail panel">
           <img :src="place.image" :alt="place.name" />
           <div class="detail-body">
-            <span class="badge">{{ place.category }}</span>
+            <span class="badge">{{ categoryLabel(place.category) }}</span>
             <h1>{{ place.name }}</h1>
             <p>{{ place.summary }}</p>
             <div class="tag-row">
@@ -18,14 +18,14 @@
 
       <aside class="side-info">
         <div class="panel info-panel">
-          <h2>방문 정보</h2>
+          <h2>{{ t('place.visitInfo') }}</h2>
           <p><MapPin :size="16" /> {{ place.address }}</p>
           <p><Clock :size="16" /> {{ place.hours }}</p>
           <p><Ticket :size="16" /> {{ place.price }}</p>
-          <p><Star :size="16" /> 평점 {{ place.rating }} · 후기 {{ place.reviews.toLocaleString() }}개</p>
+          <p><Star :size="16" /> {{ t('place.rating', { rating: place.rating }) }} · {{ t('place.reviewCount', { count: place.reviews.toLocaleString() }) }}</p>
         </div>
         <div class="panel info-panel">
-          <h2>근처 추천</h2>
+          <h2>{{ t('place.nearby') }}</h2>
           <RouterLink
             v-for="nearby in nearbyPlaces"
             :key="nearby.id"
@@ -41,7 +41,7 @@
   </section>
   <section v-else-if="isLoading" class="section">
     <div class="container">
-      <div class="panel loading-panel">장소 정보를 불러오는 중입니다.</div>
+      <div class="panel loading-panel">{{ t('common.loadingPlace') }}</div>
     </div>
   </section>
   <NotFoundView v-else />
@@ -50,6 +50,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Clock, MapPin, Star, Ticket } from '@lucide/vue'
 import { fetchPlaceById, fetchPlaces } from '../services/localHubApi'
 import NotFoundView from './NotFoundView.vue'
@@ -61,12 +62,18 @@ const props = defineProps({
   },
 })
 
+const { t, te } = useI18n()
 const place = ref(null)
 const places = ref([])
 const isLoading = ref(true)
 const nearbyPlaces = computed(() =>
   places.value.filter((item) => item.id !== Number(props.id)).slice(0, 3),
 )
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
+}
 
 async function loadPlace(id) {
   isLoading.value = true

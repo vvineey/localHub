@@ -2,15 +2,15 @@
   <section class="section">
     <div class="container">
       <div class="page-title">
-        <h1>축제 캘린더</h1>
-        <p>백엔드 서울 축제공연행사 데이터를 함께 확인합니다.</p>
+        <h1>{{ t('festivals.title') }}</h1>
+        <p>{{ t('festivals.description') }}</p>
       </div>
 
       <div class="festival-layout">
         <div class="calendar panel">
           <div class="calendar-head">
-            <h2>2026년 7월</h2>
-            <span class="badge amber">MVP 선택 기능</span>
+            <h2>{{ t('festivals.monthTitle') }}</h2>
+            <span class="badge amber">{{ t('festivals.mvp') }}</span>
           </div>
           <div class="weekday" v-for="day in weekdays" :key="day">{{ day }}</div>
           <span v-for="blank in leadingBlanks" :key="`blank-${blank}`" class="blank-cell"></span>
@@ -29,7 +29,7 @@
 
         <aside class="event-side">
           <div class="event-panel">
-            <h2>{{ selectedDay }}일 행사</h2>
+            <h2>{{ t('festivals.selectedEvents', { day: selectedDay }) }}</h2>
             <div v-if="selectedEvents.length" class="event-stack">
               <article v-for="festival in selectedEvents" :key="festival.id">
                 <img :src="festival.image" :alt="festival.name" />
@@ -40,11 +40,11 @@
                 </div>
               </article>
             </div>
-            <p v-else class="muted">선택한 날짜의 행사가 없습니다.</p>
+            <p v-else class="muted">{{ t('festivals.noEvents') }}</p>
           </div>
 
           <div class="event-panel">
-            <h2>전체 축제</h2>
+            <h2>{{ t('festivals.allFestivals') }}</h2>
             <div class="mini-list">
               <article v-for="festival in festivals" :key="festival.id">
                 <span :style="{ background: festival.color }"></span>
@@ -63,10 +63,12 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { festivals as fallbackFestivals } from '../data/localhub'
 import { fetchFestivals } from '../services/localHubApi'
 
-const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+const { t, tm } = useI18n()
+const weekdays = computed(() => tm('festivals.weekdays'))
 const selectedDay = ref(20)
 const festivals = ref([...fallbackFestivals])
 const leadingBlanks = Array.from({ length: new Date(2026, 6, 1).getDay() }, (_, index) => index)

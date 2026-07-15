@@ -1,12 +1,12 @@
 <template>
   <header class="site-header">
     <div class="header-inner">
-      <RouterLink class="brand" to="/" aria-label="Local-In 홈">
+      <RouterLink class="brand" to="/" :aria-label="t('nav.brandHome')">
         <span class="brand-mark"><MapPinned :size="17" /></span>
         <span>Local<span>-In</span></span>
       </RouterLink>
 
-      <nav class="desktop-nav" aria-label="주요 메뉴">
+      <nav class="desktop-nav" :aria-label="t('nav.mainMenu')">
         <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
           <component :is="item.icon" :size="16" />
           {{ item.label }}
@@ -14,11 +14,19 @@
       </nav>
 
       <div class="header-actions">
+        <label class="language-select">
+          <Languages :size="16" />
+          <select v-model="currentLocale" :aria-label="t('nav.language')" :title="t('nav.language')">
+            <option v-for="language in languageOptions" :key="language.value" :value="language.value">
+              {{ language.label }}
+            </option>
+          </select>
+        </label>
         <button
           class="icon-btn theme-toggle"
           type="button"
-          :aria-label="isDarkMode ? '라이트 모드로 변경' : '다크 모드로 변경'"
-          :title="isDarkMode ? '라이트 모드' : '다크 모드'"
+          :aria-label="isDarkMode ? t('nav.toLight') : t('nav.toDark')"
+          :title="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')"
           @click="toggleTheme"
         >
           <Sun v-if="isDarkMode" :size="18" />
@@ -26,14 +34,14 @@
         </button>
         <RouterLink class="btn btn-primary write-link" to="/community/new">
           <PenLine :size="16" />
-          글쓰기
+          {{ t('common.write') }}
         </RouterLink>
         <button
           class="icon-btn mobile-toggle"
           type="button"
           :aria-expanded="menuOpen"
-          aria-label="메뉴 열기"
-          title="메뉴"
+          :aria-label="t('nav.openMenu')"
+          :title="t('nav.menu')"
           @click="menuOpen = !menuOpen"
         >
           <X v-if="menuOpen" :size="20" />
@@ -42,7 +50,7 @@
       </div>
     </div>
 
-    <nav v-if="menuOpen" class="mobile-nav" aria-label="모바일 메뉴">
+    <nav v-if="menuOpen" class="mobile-nav" :aria-label="t('nav.mobileMenu')">
       <RouterLink
         v-for="item in navItems"
         :key="item.to"
@@ -55,18 +63,20 @@
       </RouterLink>
       <RouterLink class="mobile-link primary" to="/community/new" @click="menuOpen = false">
         <PenLine :size="17" />
-        글쓰기
+        {{ t('common.write') }}
       </RouterLink>
     </nav>
   </header>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   CalendarDays,
   Home,
+  Languages,
   Map,
   MapPinned,
   Menu,
@@ -78,19 +88,30 @@ import {
   Users,
   X,
 } from '@lucide/vue'
+import { languageOptions, LOCALE_STORAGE_KEY } from '../i18n'
 
 const THEME_STORAGE_KEY = 'local-in-theme'
+const { locale, t } = useI18n()
 const menuOpen = ref(false)
 const isDarkMode = ref(document.documentElement.dataset.theme === 'dark')
 
-const navItems = [
-  { to: '/', label: '홈', icon: Home },
-  { to: '/explore', label: '탐색', icon: Search },
-  { to: '/map', label: '지도', icon: Map },
-  { to: '/community', label: '커뮤니티', icon: Users },
-  { to: '/festivals', label: '축제', icon: CalendarDays },
-  { to: '/assistant', label: 'AI 채팅', icon: MessageCircle },
-]
+const navItems = computed(() => [
+  { to: '/', label: t('nav.home'), icon: Home },
+  { to: '/explore', label: t('nav.explore'), icon: Search },
+  { to: '/map', label: t('nav.map'), icon: Map },
+  { to: '/community', label: t('nav.community'), icon: Users },
+  { to: '/festivals', label: t('nav.festivals'), icon: CalendarDays },
+  { to: '/assistant', label: t('nav.assistant'), icon: MessageCircle },
+])
+
+const currentLocale = computed({
+  get: () => locale.value,
+  set: (value) => {
+    locale.value = value
+    document.documentElement.lang = value
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, value)
+  },
+})
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme
@@ -181,6 +202,28 @@ function toggleTheme() {
   color: var(--primary);
 }
 
+.language-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 9px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.language-select select {
+  max-width: 92px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .mobile-toggle {
   display: none;
 }
@@ -240,6 +283,15 @@ function toggleTheme() {
   .header-inner {
     width: min(100% - 24px, 1180px);
     height: 58px;
+  }
+
+  .language-select {
+    min-height: 38px;
+    padding: 0 8px;
+  }
+
+  .language-select select {
+    max-width: 76px;
   }
 }
 </style>

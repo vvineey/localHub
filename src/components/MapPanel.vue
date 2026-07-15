@@ -1,6 +1,6 @@
 <template>
   <div class="map-panel">
-    <div ref="mapElement" class="kakao-map" aria-label="서울 현지 추천 장소와 맛집 지도"></div>
+    <div ref="mapElement" class="kakao-map" :aria-label="t('map.panelAria')"></div>
     <div v-if="statusMessage" class="map-status">
       <strong>{{ statusTitle }}</strong>
       <span>{{ statusMessage }}</span>
@@ -10,16 +10,17 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { hasKakaoMapAppKey, loadKakaoMapsSdk } from '../services/kakaoMapSdk'
 
 const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 }
 const TYPE_STYLES = {
-  attraction: { color: '#2563eb', label: '관광지' },
-  restaurant: { color: '#ef4444', label: '맛집' },
-  nature: { color: '#10b981', label: '자연' },
-  accommodation: { color: '#06b6d4', label: '숙박' },
-  festival: { color: '#f59e0b', label: '축제' },
-  shopping: { color: '#8b5cf6', label: '쇼핑' },
+  attraction: { color: '#2563eb', labelKey: 'categories.attraction' },
+  restaurant: { color: '#ef4444', labelKey: 'categories.restaurant' },
+  nature: { color: '#10b981', labelKey: 'categories.nature' },
+  accommodation: { color: '#06b6d4', labelKey: 'categories.accommodation' },
+  festival: { color: '#f59e0b', labelKey: 'categories.festival' },
+  shopping: { color: '#8b5cf6', labelKey: 'categories.shopping' },
 }
 
 const props = defineProps({
@@ -30,13 +31,23 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select'])
+const { locale, t } = useI18n()
 const mapElement = ref(null)
 const map = shallowRef(null)
 const kakaoMaps = shallowRef(null)
 const overlays = shallowRef([])
 const activeOverlay = shallowRef(null)
-const statusTitle = ref('Kakao Maps 연결 대기')
-const statusMessage = ref(hasKakaoMapAppKey() ? '지도를 불러오는 중입니다.' : 'VITE_KAKAO_MAP_APP_KEY를 설정하면 지도가 표시됩니다.')
+const statusState = ref(hasKakaoMapAppKey() ? 'loading' : 'missingKey')
+const statusTitle = computed(() => {
+  if (statusState.value === 'loading') return t('map.loadingTitle')
+  if (statusState.value === 'missingKey') return t('map.keyRequiredTitle')
+  return ''
+})
+const statusMessage = computed(() => {
+  if (statusState.value === 'loading') return t('map.loading')
+  if (statusState.value === 'missingKey') return t('map.keyRequiredMessage')
+  return ''
+})
 
 const coordinatePins = computed(() =>
   props.pins
@@ -75,7 +86,7 @@ function createPinElement(pin) {
 
   const type = document.createElement('span')
   type.className = 'kakao-pin-type'
-  type.textContent = style.label
+  type.textContent = t(style.labelKey)
 
   label.appendChild(type)
   button.append(dot, label)
@@ -141,7 +152,7 @@ function initializeMap(kakao) {
 
   map.value.addControl(new kakaoMaps.value.ZoomControl(), kakaoMaps.value.ControlPosition.RIGHT)
   map.value.addControl(new kakaoMaps.value.MapTypeControl(), kakaoMaps.value.ControlPosition.TOPRIGHT)
-  statusMessage.value = ''
+  statusState.value = ''
   renderOverlays()
 }
 
@@ -152,12 +163,12 @@ onMounted(async () => {
     const kakao = await loadKakaoMapsSdk()
     initializeMap(kakao)
   } catch {
-    statusTitle.value = 'Kakao Maps 키 설정 필요'
-    statusMessage.value = '카카오 개발자 콘솔의 JavaScript 키를 VITE_KAKAO_MAP_APP_KEY에 넣어주세요.'
+    statusState.value = 'missingKey'
   }
 })
 
 watch(coordinatePins, renderOverlays, { flush: 'post' })
+watch(locale, renderOverlays)
 
 onBeforeUnmount(() => {
   clearOverlays()

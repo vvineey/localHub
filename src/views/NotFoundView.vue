@@ -2,16 +2,19 @@
   <section class="section">
     <div class="container not-found panel">
       <MapPinned :size="42" />
-      <h1>페이지를 찾을 수 없습니다</h1>
-      <p>요청한 화면이 없거나 삭제되었습니다.</p>
-      <RouterLink class="btn btn-primary" to="/">홈으로 이동</RouterLink>
+      <h1>{{ t('common.notFoundTitle') }}</h1>
+      <p>{{ t('common.notFoundDescription') }}</p>
+      <RouterLink class="btn btn-primary" to="/">{{ t('common.goHome') }}</RouterLink>
     </div>
   </section>
 </template>
 
 <script setup>
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { MapPinned } from '@lucide/vue'
+
+const { t } = useI18n()
 </script>
 
 <style scoped>

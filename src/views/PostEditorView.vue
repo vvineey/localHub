@@ -1,15 +1,15 @@
 <template>
   <section class="section">
     <div class="container editor-container">
-      <RouterLink class="back-link" to="/community"><ArrowLeft :size="16" /> 게시판으로</RouterLink>
+      <RouterLink class="back-link" to="/community"><ArrowLeft :size="16" /> {{ t('community.back') }}</RouterLink>
       <div class="page-title">
-        <h1>{{ isEdit ? '게시글 수정' : '새 여행 후기 작성' }}</h1>
-        <p>비밀번호는 수정과 삭제 확인에 사용됩니다.</p>
+        <h1>{{ isEdit ? t('editor.editTitle') : t('editor.newTitle') }}</h1>
+        <p>{{ t('editor.description') }}</p>
       </div>
 
       <form class="editor-form" @submit.prevent="submit">
         <div class="form-block panel">
-          <label>카테고리</label>
+          <label>{{ t('editor.category') }}</label>
           <div class="chip-row">
             <button
               v-for="category in categories"
@@ -19,30 +19,30 @@
               :class="{ active: form.category === category }"
               @click="form.category = category"
             >
-              {{ category }}
+              {{ categoryLabel(category) }}
             </button>
           </div>
         </div>
 
         <div class="form-block panel">
-          <label for="title">제목</label>
-          <input id="title" v-model="form.title" maxlength="100" type="text" placeholder="예: 경복궁 오전 방문 팁" required />
+          <label for="title">{{ t('editor.title') }}</label>
+          <input id="title" v-model="form.title" maxlength="100" type="text" :placeholder="t('editor.titlePlaceholder')" required />
           <span>{{ form.title.length }}/100</span>
         </div>
 
         <div class="form-block panel">
-          <label for="content">내용</label>
-          <textarea id="content" v-model="form.content" rows="9" placeholder="여행 경험, 팁, 발견한 장소를 공유해 주세요." required></textarea>
-          <span>{{ form.content.length }}자</span>
+          <label for="content">{{ t('editor.content') }}</label>
+          <textarea id="content" v-model="form.content" rows="9" :placeholder="t('editor.contentPlaceholder')" required></textarea>
+          <span>{{ t('common.characterCount', { count: form.content.length }) }}</span>
         </div>
 
         <div class="form-block panel">
-          <label for="password">수정용 비밀번호</label>
-          <input id="password" v-model="form.password" type="password" placeholder="비밀번호" required />
+          <label for="password">{{ t('editor.editPassword') }}</label>
+          <input id="password" v-model="form.password" type="password" :placeholder="t('common.password')" required />
         </div>
 
         <button class="btn btn-primary submit-btn" type="submit" :disabled="!isValid">
-          {{ isEdit ? '수정 완료' : '등록하기' }}
+          {{ isEdit ? t('editor.submitEdit') : t('editor.submitNew') }}
         </button>
       </form>
     </div>
@@ -52,6 +52,7 @@
 <script setup>
 import { computed, reactive, onMounted, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowLeft } from '@lucide/vue'
 import { fetchCommunityPostById, createCommunityPost, updateCommunityPost } from '../services/localHubApi'
 
@@ -63,8 +64,14 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const { t, te } = useI18n()
 const categories = ['맛집/카페', '일정', '사진', '팁', '자연']
 const isEdit = computed(() => Boolean(props.id))
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
+}
 
 const form = reactive({
   title: '',

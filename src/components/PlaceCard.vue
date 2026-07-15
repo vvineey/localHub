@@ -2,7 +2,7 @@
   <RouterLink class="place-card card" :to="`/places/${place.id}`">
     <div class="place-image">
       <img :src="place.image" :alt="place.name" loading="lazy" />
-      <span class="badge">{{ place.category }}</span>
+      <span class="badge">{{ categoryLabel(place.category) }}</span>
     </div>
     <div class="place-body">
       <h3>{{ place.name }}</h3>
@@ -10,7 +10,7 @@
       <p class="line-clamp">{{ place.summary }}</p>
       <div class="place-meta">
         <span><Star :size="14" fill="currentColor" /> {{ place.rating }}</span>
-        <span>{{ place.reviews.toLocaleString() }} 후기</span>
+        <span>{{ place.reviews.toLocaleString() }} {{ t('place.reviews') }}</span>
       </div>
     </div>
   </RouterLink>
@@ -18,6 +18,7 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { MapPin, Star } from '@lucide/vue'
 
 defineProps({
@@ -26,6 +27,13 @@ defineProps({
     required: true,
   },
 })
+
+const { t, te } = useI18n()
+
+function categoryLabel(category) {
+  const key = `categoryLabels.${category}`
+  return te(key) ? t(key) : category
+}
 </script>
 
 <style scoped>
