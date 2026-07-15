@@ -16,7 +16,7 @@
       <div class="hero-overlay"></div>
       <div class="hero-content container">
         <span class="eyebrow"><Sparkles :size="15" /> {{ t('home.eyebrow') }}</span>
-        <h1>Local-In</h1>
+        <h1>Local - in</h1>
         <p>{{ t('home.heroCopy') }}</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
@@ -488,7 +488,7 @@ function goSearch() {
 .hero h1 {
   max-width: 760px;
   margin: 18px 0 14px;
-  font-size: clamp(2.85rem, 6vw, 4.85rem);
+  font-size: clamp(3.55rem, 8vw, 6.8rem);
   line-height: 1.02;
   letter-spacing: 0;
 }
