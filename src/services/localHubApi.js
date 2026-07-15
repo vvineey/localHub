@@ -7,6 +7,10 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const PAGE_SIZE = 10000
+const FESTIVAL_CONTENT_TYPE_ID = 15
+const FESTIVAL_CALENDAR_YEAR = 2026
+const FESTIVAL_CALENDAR_MONTH_INDEX = 6
+const FESTIVAL_CALENDAR_DAYS = 31
 const CHAT_SESSION_STORAGE_KEY = 'local-in-chat-session-id'
 export const placeCategoryFilters = [
   { label: '전체', contentTypeId: null },
@@ -16,7 +20,7 @@ export const placeCategoryFilters = [
   { label: '쇼핑', contentTypeId: 38 },
   { label: '숙박', contentTypeId: 32 },
   { label: '여행코스', contentTypeId: 25 },
-  { label: '축제공연행사', contentTypeId: 15 },
+  { label: '축제공연행사', contentTypeId: FESTIVAL_CONTENT_TYPE_ID },
 ]
 const SEOUL_BOUNDS = {
   minLng: 126.75,
@@ -57,6 +61,48 @@ function colorForType(type) {
 
 function fallbackImageFor(place) {
   return fallbackPlaces[(Number(place.id) || 1) % fallbackPlaces.length]?.image || fallbackPlaces[0].image
+}
+
+function formatApiDate(value) {
+  const text = String(value || '').trim()
+  if (!text) return null
+  if (/^\d{8}$/.test(text)) return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text
+  return null
+}
+
+function parseDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+}
+
+function dateRangeLabel(startDate, endDate) {
+  if (!startDate) return '일정 미제공'
+  if (!endDate || startDate === endDate) return startDate
+  return `${startDate} ~ ${endDate}`
+}
+
+function calendarDaysForFestival(startDate, endDate) {
+  const start = parseDate(startDate)
+  const end = parseDate(endDate || startDate)
+
+  if (!start || !end) return []
+
+  const calendarStart = new Date(FESTIVAL_CALENDAR_YEAR, FESTIVAL_CALENDAR_MONTH_INDEX, 1)
+  const calendarEnd = new Date(FESTIVAL_CALENDAR_YEAR, FESTIVAL_CALENDAR_MONTH_INDEX, FESTIVAL_CALENDAR_DAYS)
+
+  if (end < calendarStart || start > calendarEnd) return []
+
+  const visibleStart = start < calendarStart ? calendarStart : start
+  const visibleEnd = end > calendarEnd ? calendarEnd : end
+  const days = []
+
+  for (let date = new Date(visibleStart); date <= visibleEnd; date.setDate(date.getDate() + 1)) {
+    days.push(date.getDate())
+  }
+
+  return days
 }
 
 function coordinatePercent(place) {
@@ -122,6 +168,35 @@ function mapApiPlace(place) {
     tags: [category, district].filter(Boolean),
     longitude: Number.isFinite(longitude) ? longitude : null,
     latitude: Number.isFinite(latitude) ? latitude : null,
+    eventStartDate: formatApiDate(place.event_start_date || place.eventstartdate),
+    eventEndDate: formatApiDate(place.event_end_date || place.eventenddate),
+    eventPlace: place.event_place || place.eventplace || null,
+  }
+}
+
+function mapApiFestival(place, index = 0) {
+  const startDate = formatApiDate(place.eventStartDate || place.event_start_date || place.eventstartdate)
+  const endDate = formatApiDate(place.eventEndDate || place.event_end_date || place.eventenddate)
+  const name = place.name || place.title || '서울 축제'
+  const category = place.category || place.content_type_name || '축제공연행사'
+  const location = place.eventPlace || place.event_place || place.eventplace || place.address || place.addr1 || '장소 미제공'
+  const district = place.district || place.district_name || '서울'
+  const image = place.image || place.first_image_url || place.thumbnail_url || fallbackImageFor(place)
+
+  return {
+    id: place.id,
+    contentId: place.contentId || place.content_id,
+    name,
+    category,
+    date: dateRangeLabel(startDate, endDate),
+    startDate,
+    endDate,
+    days: calendarDaysForFestival(startDate, endDate),
+    district,
+    location,
+    color: ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981'][index % 4],
+    image,
+    summary: place.summary || `${name}은(는) ${location}에서 열리는 ${category}입니다.`,
   }
 }
 
@@ -343,23 +418,74 @@ export async function fetchCategories() {
 }
 
 export async function fetchFestivals() {
-  const places = await loadApiPlaces()
-  const festivals = places
-    .filter((place) => place.type === 'festival')
-    .map((place, index) => ({
-      id: place.id,
-      name: place.name,
-      category: place.category,
-      date: '일정 미제공',
-      days: [],
-      district: place.district,
-      location: place.address,
-      color: ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981'][index % 4],
-      image: place.image,
-      summary: place.summary,
-    }))
+  try {
+    const items = []
+    let skip = 0
 
-  return festivals.length ? festivals : fallbackFestivals
+    while (true) {
+      const params = new URLSearchParams({
+        skip: String(skip),
+        limit: String(PAGE_SIZE),
+        content_type_id: String(FESTIVAL_CONTENT_TYPE_ID),
+      })
+      const payload = await requestJson(`/places?${params.toString()}`)
+      const pageItems = Array.isArray(payload.items) ? payload.items : []
+
+      items.push(...pageItems.map((place, index) => mapApiFestival(mapApiPlace(place), skip + index)))
+
+      if (pageItems.length < PAGE_SIZE) break
+      skip += PAGE_SIZE
+    }
+
+    return items.length ? items : fallbackFestivals
+  } catch {
+    return fallbackFestivals
+  }
+}
+
+export async function fetchFestivalsPage({ page = 1, pageSize = 5, fallbackOnError = true } = {}) {
+  const safePage = Math.max(1, Number(page) || 1)
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 5))
+  const skip = (safePage - 1) * safePageSize
+
+  try {
+    const params = new URLSearchParams({
+      skip: String(skip),
+      limit: String(safePageSize),
+      content_type_id: String(FESTIVAL_CONTENT_TYPE_ID),
+    })
+    const payload = await requestJson(`/places?${params.toString()}`)
+    const items = Array.isArray(payload.items)
+      ? payload.items.map((place, index) => mapApiFestival(mapApiPlace(place), skip + index))
+      : []
+
+    return {
+      items,
+      pagination: normalizePagination(payload.pagination, safePage, safePageSize, items.length),
+    }
+  } catch {
+    if (!fallbackOnError) {
+      return {
+        items: [],
+        pagination: {
+          page: safePage,
+          size: safePageSize,
+          total: 0,
+        },
+      }
+    }
+
+    const pageItems = fallbackFestivals.slice(skip, skip + safePageSize)
+
+    return {
+      items: pageItems,
+      pagination: {
+        page: safePage,
+        size: safePageSize,
+        total: fallbackFestivals.length,
+      },
+    }
+  }
 }
 
 export async function fetchMapPins({ max = 180 } = {}) {
