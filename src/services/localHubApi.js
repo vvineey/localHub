@@ -248,6 +248,28 @@ function normalizePagination(pagination, fallbackPage, fallbackSize, fallbackTot
   }
 }
 
+function extractArrayPayload(payload, keys = []) {
+  if (Array.isArray(payload)) return payload
+
+  for (const key of keys) {
+    const value = payload?.[key]
+    if (Array.isArray(value)) return value
+    if (Array.isArray(value?.items)) return value.items
+    if (Array.isArray(value?.data)) return value.data
+    if (Array.isArray(value?.results)) return value.results
+  }
+
+  for (const key of ['items', 'data', 'posts', 'comments', 'results', 'content']) {
+    const value = payload?.[key]
+    if (Array.isArray(value)) return value
+    if (Array.isArray(value?.items)) return value.items
+    if (Array.isArray(value?.data)) return value.data
+    if (Array.isArray(value?.results)) return value.results
+  }
+
+  return []
+}
+
 function normalizeComment(comment = {}) {
   return {
     id: comment.id,
@@ -284,8 +306,8 @@ function sortPostsByViews(posts = []) {
 }
 
 async function fetchCommentPreview(postId) {
-  const comments = await requestJson(`/comments/posts/${postId}`)
-  return Array.isArray(comments) ? comments.map(normalizeComment) : []
+  const payload = await requestJson(`/comments/posts/${postId}`)
+  return extractArrayPayload(payload, ['comments']).map(normalizeComment)
 }
 
 async function withCommentPreview(posts = []) {
@@ -445,7 +467,7 @@ export async function fetchCommunityPosts({ page = 1, pageSize = 100, sort = 'la
     sort,
   })
   const payload = await requestJson(`/posts?${params.toString()}`)
-  const items = Array.isArray(payload.items) ? payload.items.map(normalizePost) : []
+  const items = extractArrayPayload(payload, ['posts']).map(normalizePost)
 
   return {
     items,
@@ -462,7 +484,7 @@ export async function fetchPopularCommunityPosts({ limit = 5 } = {}) {
 
   try {
     const payload = await requestJson(`/posts/popular?limit=${safeLimit}`)
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload.items) ? payload.items : []
+    const items = extractArrayPayload(payload, ['posts'])
     const popularPosts = items.map(normalizePost).slice(0, safeLimit)
 
     if (!popularPosts.length) {
@@ -506,8 +528,8 @@ export async function verifyCommunityPostPassword(id, password) {
 }
 
 export async function fetchCommentsByPostId(postId) {
-  const comments = await requestJson(`/comments/posts/${postId}`)
-  return Array.isArray(comments) ? comments.map(normalizeComment) : []
+  const payload = await requestJson(`/comments/posts/${postId}`)
+  return extractArrayPayload(payload, ['comments']).map(normalizeComment)
 }
 
 export async function createComment(postId, payload) {
