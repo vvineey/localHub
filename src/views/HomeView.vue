@@ -395,8 +395,20 @@ function goSearch() {
   flex: 1;
   min-width: 0;
   color: var(--text);
+  background: transparent;
   border: 0;
   outline: 0;
+  appearance: none;
+  caret-color: var(--text);
+}
+
+.hero-search input::placeholder {
+  color: var(--muted-light);
+}
+
+.hero-search input::-webkit-search-cancel-button,
+.hero-search input::-webkit-search-decoration {
+  appearance: none;
 }
 
 .quick-stats {
