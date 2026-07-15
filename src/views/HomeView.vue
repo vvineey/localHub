@@ -157,16 +157,15 @@ import { ArrowRight, CalendarDays, Map, MapPin, MessageCircle, Search, Sparkles,
 import MapPanel from '../components/MapPanel.vue'
 import StatBars from '../components/StatBars.vue'
 import { festivals as fallbackFestivals, mapPins as fallbackMapPins, places as fallbackPlaces } from '../data/localhub'
-import { fetchFestivals, fetchMapPins, fetchPlaces } from '../services/localHubApi'
-import { useCommunityStore } from '../stores/community'
+import { fetchFestivals, fetchMapPins, fetchPlaces, fetchCommunityPosts } from '../services/localHubApi'
 
 const HERO_SLIDE_INTERVAL_MS = 2000
 
 const router = useRouter()
 const keyword = ref('')
 const selectedPin = ref(null)
-const community = useCommunityStore()
 const activeHeroIndex = ref(0)
+const communityPostsCount = ref(0)
 const activeShowcaseIndex = ref(0)
 const showcaseCardRefs = ref([])
 const homePlaces = ref([...fallbackPlaces])
@@ -201,7 +200,7 @@ const heroImages = [
 const stats = computed(() => [
   { label: '현지 추천 장소', value: homePlaces.value.length.toLocaleString(), icon: Map },
   { label: '동네 축제 일정', value: homeFestivals.value.length.toLocaleString(), icon: CalendarDays },
-  { label: '여행자 후기', value: community.state.posts.length, icon: Users },
+  { label: '여행자 후기', value: communityPostsCount.value.toLocaleString(), icon: Users },
   { label: 'AI 큐레이션', value: 5, icon: MessageCircle },
 ])
 
@@ -224,7 +223,7 @@ const barItems = computed(() => [
     percent: 32,
     color: '#06b6d4',
   },
-  { label: '후기', value: community.state.posts.length, percent: 68, color: '#f59e0b' },
+  { label: '후기', value: communityPostsCount.value.toLocaleString(), percent: 68, color: '#f59e0b' },
 ])
 
 const showcasePlaces = computed(() => homePlaces.value.slice(0, 3))
@@ -280,6 +279,14 @@ async function loadHomeData() {
   homePlaces.value = places
   homeFestivals.value = festivals
   homeMapPins.value = pins
+
+  try {
+    const { pagination } = await fetchCommunityPosts({ page: 1, pageSize: 1 })
+    communityPostsCount.value = pagination.total ?? 0
+  } catch {
+    communityPostsCount.value = 0
+  }
+
   activeShowcaseIndex.value = 0
   await nextTick()
   observeShowcaseCards()

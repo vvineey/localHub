@@ -50,10 +50,10 @@
 </template>
 
 <script setup>
-import { computed, reactive, watchEffect } from 'vue'
+import { computed, reactive, onMounted, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ArrowLeft } from '@lucide/vue'
-import { useCommunityStore } from '../stores/community'
+import { fetchCommunityPostById, createCommunityPost, updateCommunityPost } from '../services/localHubApi'
 
 const props = defineProps({
   id: {
@@ -63,7 +63,6 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const store = useCommunityStore()
 const categories = ['맛집/카페', '일정', '사진', '팁', '자연']
 const isEdit = computed(() => Boolean(props.id))
 
@@ -74,20 +73,33 @@ const form = reactive({
   password: '',
 })
 
-watchEffect(() => {
-  if (!props.id) return
-  const post = store.getPost(props.id)
-  if (!post) return
-  form.title = post.title
-  form.content = post.content
-  form.category = post.category
-  form.password = post.password
-})
+async function loadPost() {
+  if (!props.id) {
+    form.title = ''
+    form.content = ''
+    form.category = '팁'
+    form.password = ''
+    return
+  }
+
+  try {
+    const post = await fetchCommunityPostById(props.id)
+    form.title = post.title || ''
+    form.content = post.content || ''
+    form.category = post.category || '팁'
+  } catch {
+    router.push('/community')
+  }
+}
+
+onMounted(loadPost)
+watch(() => props.id, loadPost)
 
 const isValid = computed(() => form.title.trim() && form.content.trim() && form.password.trim())
 
-function submit() {
+async function submit() {
   if (!isValid.value) return
+
   const payload = {
     title: form.title.trim(),
     content: form.content.trim(),
@@ -95,8 +107,18 @@ function submit() {
     password: form.password,
   }
 
-  const post = isEdit.value ? store.updatePost(props.id, payload) : store.createPost(payload)
-  router.push(`/community/${post.id}`)
+  try {
+    if (isEdit.value) {
+      await updateCommunityPost(props.id, payload)
+      router.push(`/community/${props.id}`)
+      return
+    }
+
+    const post = await createCommunityPost(payload)
+    router.push(`/community/${post.id}`)
+  } catch {
+    // 실패 시 현재 페이지에 머물며 사용자는 다시 시도할 수 있습니다.
+  }
 }
 </script>
 
