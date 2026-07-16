@@ -228,10 +228,11 @@ async function handleSelect(pin) {
 onMounted(async () => {
   try {
     mapPins.value = await fetchMapPins({ max: 360 })
-    await loadInitialUserLocation()
   } finally {
     isMapLoading.value = false
   }
+
+  loadInitialUserLocation()
 })
 </script>
 
