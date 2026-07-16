@@ -100,8 +100,8 @@ async function send(text) {
   justify-content: center;
   width: 56px;
   height: 56px;
-  color: #fff;
-  background: #0d1117;
+  color: var(--on-primary);
+  background: var(--primary);
   border: 1px solid var(--line);
   border-radius: 999px;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
@@ -119,10 +119,6 @@ async function send(text) {
 }
 
 .widget-panel {
-  --primary: #0d1117;
-  --primary-dark: #010409;
-  --primary-soft: #f3f4f6;
-  --on-primary: #ffffff;
   display: flex;
   overflow: hidden;
   width: min(360px, calc(100vw - 24px));
@@ -140,8 +136,8 @@ async function send(text) {
   justify-content: space-between;
   gap: 12px;
   padding: 13px 14px;
-  color: #fff;
-  background: #0d1117;
+  color: var(--on-primary);
+  background: var(--primary);
 }
 
 .widget-header strong,
@@ -176,8 +172,8 @@ async function send(text) {
 .quick-row button {
   min-height: 30px;
   padding: 0 9px;
-  color: #0d1117;
-  background: #f3f4f6;
+  color: var(--primary);
+  background: var(--primary-soft);
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 0.76rem;
@@ -185,25 +181,19 @@ async function send(text) {
 }
 
 :global([data-theme='dark']) .quick-row button {
-  color: #fff;
+  color: var(--primary);
+  background: var(--primary-soft);
   border: 1px solid var(--line);
 }
 
 :global([data-theme='dark']) .widget-button {
-  color: #0d1117;
-  background: #fff;
-}
-
-:global([data-theme='dark']) .widget-panel {
-  --primary: #ffffff;
-  --primary-dark: #e5e5e5;
-  --primary-soft: #161b22;
-  --on-primary: #0d1117;
+  color: var(--on-primary);
+  background: var(--primary);
 }
 
 :global([data-theme='dark']) .widget-header {
-  color: #0d1117;
-  background: #fff;
+  color: var(--on-primary);
+  background: var(--primary);
 }
 
 @media (max-width: 640px) {

@@ -96,13 +96,6 @@ async function send(text) {
   gap: 18px;
 }
 
-.assistant-container {
-  --primary: #0d1117;
-  --primary-dark: #010409;
-  --primary-soft: #f3f4f6;
-  --on-primary: #ffffff;
-}
-
 .chat-panel {
   display: flex;
   overflow: hidden;
@@ -136,7 +129,7 @@ header span {
 
 header span {
   margin-top: 3px;
-  color: var(--green);
+  color: var(--primary);
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -178,7 +171,7 @@ header span {
 .gradient {
   color: #fff;
   background: #0d1117;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line));
 }
 
 .gradient h2 {
@@ -189,13 +182,6 @@ header span {
   color: #fff;
   background: #0d1117;
   border: 1px solid var(--line);
-}
-
-:global([data-theme='dark']) .assistant-container {
-  --primary: #ffffff;
-  --primary-dark: #e5e5e5;
-  --primary-soft: #161b22;
-  --on-primary: #0d1117;
 }
 
 .gradient ul {
