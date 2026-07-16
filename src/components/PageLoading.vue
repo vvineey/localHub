@@ -7,7 +7,16 @@
             <img class="page-loading__logo" :src="localinLogo" alt="Local-In" />
           </div>
           <div class="page-loading__text">
-            <h1>Local-in</h1>
+            <h1 class="page-loading__title" aria-label="Local-in">
+              <span
+                v-for="(letter, index) in loadingTitleLetters"
+                :key="`${letter}-${index}`"
+                aria-hidden="true"
+                :style="{ '--letter-index': index }"
+              >
+                {{ letter }}
+              </span>
+            </h1>
             <p class="page-loading__subtitle">로딩 중... 지역 정보를 불러오고 있습니다.</p>
           </div>
         </div>
@@ -26,6 +35,8 @@
 
 <script setup>
 import localinLogo from '../assets/icon/localin.png'
+
+const loadingTitleLetters = ['L', 'o', 'c', 'a', 'l', '-', 'i', 'n']
 </script>
 
 <style scoped>
@@ -100,6 +111,35 @@ import localinLogo from '../assets/icon/localin.png'
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 900;
   letter-spacing: -0.04em;
+}
+
+.page-loading__title {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.page-loading__title span {
+  display: inline-block;
+  color: var(--text);
+  animation: page-loading-title-sweep 3s ease-in-out infinite;
+  animation-delay: calc(240ms + (var(--letter-index) * 95ms));
+}
+
+@keyframes page-loading-title-sweep {
+  0%,
+  38%,
+  100% {
+    color: var(--text);
+    text-shadow: none;
+    transform: translateY(0);
+  }
+
+  10%,
+  22% {
+    color: var(--primary);
+    text-shadow: 0 0 26px rgba(var(--primary-rgb), 0.36);
+    transform: translateY(-0.035em);
+  }
 }
 
 .page-loading__subtitle {
@@ -220,6 +260,12 @@ import localinLogo from '../assets/icon/localin.png'
 
   .page-loading h1 {
     font-size: clamp(1.8rem, 10vw, 2.4rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loading__title span {
+    animation: none;
   }
 }
 </style>

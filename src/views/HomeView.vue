@@ -612,13 +612,13 @@ function goSearch() {
 .hero-title-sweep span {
   display: inline-block;
   color: #fff;
-  animation: hero-title-color-sweep 7s ease-in-out infinite;
+  animation: hero-title-color-sweep 3s ease-in-out infinite;
   animation-delay: calc(240ms + (var(--letter-index) * 95ms));
 }
 
 @keyframes hero-title-color-sweep {
   0%,
-  28%,
+  38%,
   100% {
     color: #fff;
     text-shadow: none;
@@ -626,7 +626,7 @@ function goSearch() {
   }
 
   10%,
-  16% {
+  22% {
     color: var(--primary);
     text-shadow: 0 0 32px rgba(var(--primary-rgb), 0.48);
     transform: translateY(-0.035em);
