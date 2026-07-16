@@ -91,7 +91,7 @@ const messages = {
     home: {
       eyebrow: '현지인의 추천 장소로 시작하는 서울 여행',
       heroCopy: '현지인이 남긴 생생한 후기로, 낯선 여행도 더 쉽고 가볍게 시작해보세요.',
-      searchPlaceholder: '동네, 분위기, 현지 추천 검색',
+      searchPlaceholder: '예: 성수동 카페, 한강 산책, 주말 축제',
       progressLabel: '오늘의 현지 추천 위치',
       localPick: 'LOCAL PICK',
       todayTitle: '현지인 추천<br />오늘의 관광지',
@@ -324,7 +324,7 @@ const messages = {
     home: {
       eyebrow: 'Start Seoul with local picks',
       heroCopy: 'Meet neighborhoods worth visiting today and real reviews before the obvious routes.',
-      searchPlaceholder: 'Search neighborhood, mood, local pick',
+      searchPlaceholder: 'Try: Seongsu cafes, Han River walk, weekend festival',
       progressLabel: 'Today’s local pick position',
       localPick: 'LOCAL PICK',
       todayTitle: 'Today’s Local<br />Destination',
@@ -558,7 +558,7 @@ const messages = {
     home: {
       eyebrow: '从本地人推荐开始首尔旅行',
       heroCopy: '比起常见路线，先看看今天值得停留的街区和真实评价。',
-      searchPlaceholder: '搜索街区、氛围、本地推荐',
+      searchPlaceholder: '例：圣水洞咖啡、汉江散步、周末庆典',
       progressLabel: '今日本地推荐位置',
       localPick: 'LOCAL PICK',
       todayTitle: '本地人推荐的<br />今日景点',
@@ -792,7 +792,7 @@ const messages = {
     home: {
       eyebrow: '現地のおすすめから始めるソウル旅',
       heroCopy: '定番コースより、今日立ち寄りたい街とリアルなレビューを先に見つけましょう。',
-      searchPlaceholder: '街、雰囲気、現地おすすめを検索',
+      searchPlaceholder: '例：聖水洞カフェ、漢江散歩、週末の祭り',
       progressLabel: '今日の現地おすすめ位置',
       localPick: 'LOCAL PICK',
       todayTitle: '現地の人がすすめる<br />今日の観光地',

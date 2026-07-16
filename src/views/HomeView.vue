@@ -16,7 +16,16 @@
       <div class="hero-overlay"></div>
       <div class="hero-content container">
         <span class="eyebrow"><Sparkles :size="15" /> {{ t('home.eyebrow') }}</span>
-        <h1>Local-in</h1>
+        <h1 class="hero-title-sweep" aria-label="Local-in">
+          <span
+            v-for="(letter, index) in heroTitleLetters"
+            :key="`${letter}-${index}`"
+            aria-hidden="true"
+            :style="{ '--letter-index': index }"
+          >
+            {{ letter }}
+          </span>
+        </h1>
         <p>{{ t('home.heroCopy') }}</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
@@ -223,6 +232,7 @@ const HERO_SLIDE_INTERVAL_MS = 2000
 const COMMENT_ROTATE_INTERVAL_MS = 2800
 const HOME_FESTIVAL_CARD_COUNT = 5
 const HOME_FESTIVAL_ROTATE_INTERVAL_MS = 4200
+const heroTitleLetters = ['L', 'o', 'c', 'a', 'l', '-', 'i', 'n']
 
 const { t, te } = useI18n()
 const router = useRouter()
@@ -587,11 +597,40 @@ function goSearch() {
 }
 
 .hero h1 {
-  max-width: 760px;
+  max-width: 900px;
   margin: 18px 0 14px;
-  font-size: clamp(3.55rem, 8vw, 6.8rem);
+  font-size: clamp(4.2rem, 9.2vw, 8.4rem);
   line-height: 1.02;
   letter-spacing: 0;
+}
+
+.hero-title-sweep {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.hero-title-sweep span {
+  display: inline-block;
+  color: #fff;
+  animation: hero-title-color-sweep 7s ease-in-out infinite;
+  animation-delay: calc(240ms + (var(--letter-index) * 95ms));
+}
+
+@keyframes hero-title-color-sweep {
+  0%,
+  28%,
+  100% {
+    color: #fff;
+    text-shadow: none;
+    transform: translateY(0);
+  }
+
+  10%,
+  16% {
+    color: var(--primary);
+    text-shadow: 0 0 32px rgba(var(--primary-rgb), 0.48);
+    transform: translateY(-0.035em);
+  }
 }
 
 .hero p {
@@ -1386,6 +1425,12 @@ function goSearch() {
   .home-festival-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-title-sweep span {
+    animation: none;
   }
 }
 </style>
