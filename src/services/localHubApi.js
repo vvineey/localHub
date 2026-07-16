@@ -358,7 +358,7 @@ async function withCommentPreview(posts = []) {
 }
 
 async function fetchPopularPostsFromList(limit) {
-  const { items } = await fetchCommunityPosts({ page: 1, pageSize: 100, sort: 'popular' })
+  const { items } = await fetchCommunityPosts({ page: 1, pageSize: limit, sort: 'popular' })
   return withCommentPreview(sortPostsByViews(items).slice(0, limit))
 }
 
