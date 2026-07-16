@@ -191,6 +191,16 @@ async function handleMapClick() {
   }
 }
 
+async function loadInitialUserLocation() {
+  try {
+    const location = await getCurrentPosition()
+    userLocation.value = location
+    sortPinsByLocation(location)
+  } catch (error) {
+    console.warn('초기 현재 위치를 가져올 수 없습니다.', error)
+  }
+}
+
 async function handleSelect(pin) {
   selected.value = pin
   selectedRegion.value = null
@@ -221,6 +231,8 @@ onMounted(async () => {
   } finally {
     isMapLoading.value = false
   }
+
+  loadInitialUserLocation()
 })
 </script>
 

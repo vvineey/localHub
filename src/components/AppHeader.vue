@@ -310,8 +310,8 @@ function toggleTheme() {
 :global([data-theme='dark']) .nav-link.router-link-active,
 :global([data-theme='dark']) .mobile-link.router-link-active,
 :global([data-theme='dark']) .mobile-link:hover {
-  color: #fff;
-  background: #161b22;
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 @media (max-width: 860px) {
