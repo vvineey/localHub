@@ -110,7 +110,7 @@ const messages = {
       hotPostsNoComment: '아직 댓글이 없습니다.',
       neighborhoodCuration: '동네별 큐레이션',
       monthlyFestival: '이번 달 동네 축제',
-      monthlyFestivalCopy: '지금 가기 좋은 서울 행사를 골라봅니다.',
+      monthlyFestivalCopy: '지금 가기 좋은 행사를 소개해드릴게요!',
       calendar: '캘린더',
       localMetrics: '현지 추천 지표',
       localMetricsCopy: '장소 유형과 후기 흐름을 한눈에 봅니다.',
@@ -178,7 +178,7 @@ const messages = {
       currentLocationMarker: '현재 위치',
     },
     festivals: {
-      title: '서울 축제 일정',
+      title: '축제 일정',
       description: '서울에서 열리는 축제와 공연 일정을 한눈에 확인하고, 관심 있는 행사의 상세 정보를 바로 살펴보세요.',
       monthTitle: '2026년 7월',
       selectedEvents: '{day}일 행사',
