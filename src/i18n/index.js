@@ -90,7 +90,7 @@ const messages = {
     },
     home: {
       eyebrow: '현지인의 추천 장소로 시작하는 서울 여행',
-      heroCopy: '익숙한 코스보다 오늘 머물기 좋은 동네와 생생한 후기를 먼저 만나보세요.',
+      heroCopy: '현지인이 남긴 생생한 후기로, 낯선 여행도 더 쉽고 가볍게 시작해보세요.',
       searchPlaceholder: '동네, 분위기, 현지 추천 검색',
       progressLabel: '오늘의 현지 추천 위치',
       localPick: 'LOCAL PICK',

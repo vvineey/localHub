@@ -16,7 +16,7 @@
       <div class="hero-overlay"></div>
       <div class="hero-content container">
         <span class="eyebrow"><Sparkles :size="15" /> {{ t('home.eyebrow') }}</span>
-        <h1>Local - in</h1>
+        <h1>Local-in</h1>
         <p>{{ t('home.heroCopy') }}</p>
         <form class="hero-search" @submit.prevent="goSearch">
           <Search :size="20" />
@@ -317,8 +317,6 @@ function categoryLabel(category) {
 function setShowcaseCardRef(element, index) {
   if (element) {
     showcaseCardRefs.value[index] = element
-  } else {
-    showcaseCardRefs.value[index] = null
   }
 }
 
@@ -395,34 +393,31 @@ function startHomeFestivalRotation() {
 }
 
 function observeShowcaseCards() {
-  if (!('IntersectionObserver' in window)) return
+  if ('IntersectionObserver' in window) {
+    if (showcaseObserver) {
+      showcaseObserver.disconnect()
+    }
 
-  if (showcaseObserver) {
-    showcaseObserver.disconnect()
+    showcaseObserver = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+
+        if (visibleEntry) {
+          activeShowcaseIndex.value = Number(visibleEntry.target.dataset.index)
+        }
+      },
+      {
+        rootMargin: '-28% 0px -38% 0px',
+        threshold: [0.2, 0.4, 0.6, 0.8],
+      },
+    )
+
+    showcaseCardRefs.value.forEach((element) => {
+      showcaseObserver.observe(element)
+    })
   }
-
-  const showcaseElements = showcaseCardRefs.value.filter(Boolean)
-  if (!showcaseElements.length) return
-
-  showcaseObserver = new IntersectionObserver(
-    (entries) => {
-      const visibleEntry = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-
-      if (visibleEntry) {
-        activeShowcaseIndex.value = Number(visibleEntry.target.dataset.index)
-      }
-    },
-    {
-      rootMargin: '-28% 0px -38% 0px',
-      threshold: [0.2, 0.4, 0.6, 0.8],
-    },
-  )
-
-  showcaseElements.forEach((element) => {
-    showcaseObserver.observe(element)
-  })
 }
 
 async function loadHomeData() {
@@ -455,7 +450,8 @@ async function loadHomeData() {
 
   activeShowcaseIndex.value = 0
   homeFestivalOffset.value = 0
-  showcaseCardRefs.value = []
+  await nextTick()
+  observeShowcaseCards()
 }
 
 async function loadPopularPosts() {
@@ -477,8 +473,6 @@ async function loadInitialHome() {
   isHomeLoading.value = true
   await Promise.all([loadHomeData(), loadPopularPosts()])
   isHomeLoading.value = false
-  await nextTick()
-  observeShowcaseCards()
 }
 
 onMounted(() => {
