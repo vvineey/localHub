@@ -204,25 +204,68 @@ function toggleTheme() {
 }
 
 .language-select {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 9px;
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px 0 13px;
+  color: var(--text);
+  background: rgba(var(--surface-rgb), 0.92);
+  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border-radius: 999px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.language-select:hover,
+.language-select:focus-within {
+  background: rgba(var(--surface-rgb), 1);
+  border-color: rgba(var(--primary-rgb), 0.25);
+  transform: translateY(-1px);
+}
+
+.language-select svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.language-select::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--muted);
+  pointer-events: none;
 }
 
 .language-select select {
-  max-width: 92px;
+  flex: 1;
+  min-width: 84px;
   color: var(--text);
   background: transparent;
   border: 0;
   outline: 0;
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 26px;
+  cursor: pointer;
+}
+
+.language-select select::-ms-expand {
+  display: none;
+}
+
+.language-select select option {
+  color: var(--text);
+  background: var(--surface);
 }
 
 .mobile-toggle {
