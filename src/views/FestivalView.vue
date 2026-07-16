@@ -191,7 +191,12 @@ const CALENDAR_YEAR = 2026
 const CALENDAR_MONTH_INDEX = 6
 const CALENDAR_DAYS = 31
 const MAX_WEEK_EVENT_ROWS = 4
-const EVENT_COLORS = ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#06b6d4']
+const EVENT_COLOR_STEPS = [
+  { background: '#9DD7D7', text: '#021F1F' },
+  { background: '#3CAFAF', text: '#FFFFFF' },
+  { background: '#097C7C', text: '#FFFFFF' },
+  { background: '#043E3E', text: '#FFFFFF' },
+]
 
 const weekdays = computed(() => tm('festivals.weekdays'))
 const selectedDay = ref(1)
@@ -262,13 +267,15 @@ const calendarWeeks = computed(() => {
         const endDay = Math.max(...eventDays)
         const startColumn = days.find((day) => day.value === startDay)?.column || 1
         const endColumn = days.find((day) => day.value === endDay)?.column || startColumn
+        const colorStep = EVENT_COLOR_STEPS[index % EVENT_COLOR_STEPS.length]
 
         return {
           ...festival,
           key: `${festival.id}-${weekIndex}`,
           startColumn,
           span: endColumn - startColumn + 1,
-          color: festival.color || EVENT_COLORS[index % EVENT_COLORS.length],
+          color: colorStep.background,
+          textColor: colorStep.text,
         }
       })
       .filter(Boolean)
@@ -321,6 +328,7 @@ function calendarEventStyle(segment) {
   return {
     '--event-row': segment.row,
     '--event-color': segment.color,
+    '--event-text-color': segment.textColor,
     gridColumn: `${segment.startColumn} / span ${segment.span}`,
   }
 }
@@ -734,7 +742,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
   padding: 0 8px;
-  color: #fff;
+  color: var(--event-text-color);
   background: var(--event-color);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
   transition:
