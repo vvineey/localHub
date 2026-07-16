@@ -256,7 +256,7 @@ const popularPostsError = ref(false)
 let heroSlideTimerId = null
 let commentRotateTimerId = null
 let homeFestivalRotateTimerId = null
-let showcaseObserver = null
+let showcaseScrollFrameId = null
 
 const heroImages = [
   { src: 'https://tong.visitkorea.or.kr/cms/resource_photo/46/3551346_image2_1.jpg', alt: '양화한강공원' },
@@ -317,6 +317,8 @@ function categoryLabel(category) {
 function setShowcaseCardRef(element, index) {
   if (element) {
     showcaseCardRefs.value[index] = element
+  } else {
+    showcaseCardRefs.value[index] = null
   }
 }
 
@@ -392,31 +394,51 @@ function startHomeFestivalRotation() {
   }, HOME_FESTIVAL_ROTATE_INTERVAL_MS)
 }
 
-function observeShowcaseCards() {
-  if ('IntersectionObserver' in window) {
-    if (showcaseObserver) {
-      showcaseObserver.disconnect()
+function updateActiveShowcaseIndex() {
+  const viewportAnchor = window.innerHeight * 0.48
+  let closestIndex = activeShowcaseIndex.value
+  let closestDistance = Number.POSITIVE_INFINITY
+
+  showcaseCardRefs.value.forEach((element, index) => {
+    if (!element) return
+
+    const rect = element.getBoundingClientRect()
+    const cardAnchor = rect.top + rect.height * 0.48
+    const distance = Math.abs(cardAnchor - viewportAnchor)
+
+    if (distance < closestDistance) {
+      closestDistance = distance
+      closestIndex = index
     }
+  })
 
-    showcaseObserver = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+  activeShowcaseIndex.value = closestIndex
+}
 
-        if (visibleEntry) {
-          activeShowcaseIndex.value = Number(visibleEntry.target.dataset.index)
-        }
-      },
-      {
-        rootMargin: '-28% 0px -38% 0px',
-        threshold: [0.2, 0.4, 0.6, 0.8],
-      },
-    )
+function scheduleShowcaseScrollUpdate() {
+  if (showcaseScrollFrameId !== null) return
 
-    showcaseCardRefs.value.forEach((element) => {
-      showcaseObserver.observe(element)
-    })
+  showcaseScrollFrameId = window.requestAnimationFrame(() => {
+    showcaseScrollFrameId = null
+    updateActiveShowcaseIndex()
+  })
+}
+
+function bindShowcaseScrollTracking() {
+  window.removeEventListener('scroll', scheduleShowcaseScrollUpdate)
+  window.removeEventListener('resize', scheduleShowcaseScrollUpdate)
+  window.addEventListener('scroll', scheduleShowcaseScrollUpdate, { passive: true })
+  window.addEventListener('resize', scheduleShowcaseScrollUpdate)
+  scheduleShowcaseScrollUpdate()
+}
+
+function unbindShowcaseScrollTracking() {
+  window.removeEventListener('scroll', scheduleShowcaseScrollUpdate)
+  window.removeEventListener('resize', scheduleShowcaseScrollUpdate)
+
+  if (showcaseScrollFrameId !== null) {
+    window.cancelAnimationFrame(showcaseScrollFrameId)
+    showcaseScrollFrameId = null
   }
 }
 
@@ -450,8 +472,7 @@ async function loadHomeData() {
 
   activeShowcaseIndex.value = 0
   homeFestivalOffset.value = 0
-  await nextTick()
-  observeShowcaseCards()
+  showcaseCardRefs.value = []
 }
 
 async function loadPopularPosts() {
@@ -473,6 +494,8 @@ async function loadInitialHome() {
   isHomeLoading.value = true
   await Promise.all([loadHomeData(), loadPopularPosts()])
   isHomeLoading.value = false
+  await nextTick()
+  bindShowcaseScrollTracking()
 }
 
 onMounted(() => {
@@ -503,9 +526,7 @@ onBeforeUnmount(() => {
     window.clearInterval(homeFestivalRotateTimerId)
   }
 
-  if (showcaseObserver) {
-    showcaseObserver.disconnect()
-  }
+  unbindShowcaseScrollTracking()
 })
 
 function goSearch() {
