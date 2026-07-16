@@ -90,7 +90,7 @@ const messages = {
     },
     home: {
       eyebrow: '현지인의 추천 장소로 시작하는 서울 여행',
-      heroCopy: '익숙한 코스보다 오늘 머물기 좋은 동네와 생생한 후기를 먼저 만나보세요.',
+      heroCopy: '현지인이 남긴 생생한 후기로, 낯선 여행도 더 쉽고 가볍게 시작해보세요.',
       searchPlaceholder: '동네, 분위기, 현지 추천 검색',
       progressLabel: '오늘의 현지 추천 위치',
       localPick: 'LOCAL PICK',
@@ -110,7 +110,7 @@ const messages = {
       hotPostsNoComment: '아직 댓글이 없습니다.',
       neighborhoodCuration: '동네별 큐레이션',
       monthlyFestival: '이번 달 동네 축제',
-      monthlyFestivalCopy: '지금 가기 좋은 서울 행사를 골라봅니다.',
+      monthlyFestivalCopy: '지금 가기 좋은 행사를 소개해드릴게요!',
       calendar: '캘린더',
       localMetrics: '현지 추천 지표',
       localMetricsCopy: '장소 유형과 후기 흐름을 한눈에 봅니다.',
@@ -178,7 +178,7 @@ const messages = {
       currentLocationMarker: '현재 위치',
     },
     festivals: {
-      title: '서울 축제 일정',
+      title: '축제 일정',
       description: '서울에서 열리는 축제와 공연 일정을 한눈에 확인하고, 관심 있는 행사의 상세 정보를 바로 살펴보세요.',
       monthTitle: '2026년 7월',
       selectedEvents: '{day}일 행사',
