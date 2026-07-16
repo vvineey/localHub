@@ -97,7 +97,6 @@
     <section class="section split-band hot-post-band">
       <div class="container hot-post-layout">
         <div class="hot-post-copy">
-          <span class="badge green">{{ t('home.hotPostsBadge') }}</span>
           <h2>{{ t('home.hotPostsTitle') }}</h2>
           <p v-html="t('home.hotPostsCopy')"></p>
           <RouterLink class="btn btn-primary" to="/community">
@@ -155,7 +154,7 @@
           @mouseenter="isHomeFestivalHovered = true"
           @mouseleave="isHomeFestivalHovered = false"
         >
-          <div class="section-title compact">
+          <div class="section-title compact home-festival-header">
             <div>
               <h2>{{ t('festivals.title') }}</h2>
               <p>{{ t('home.monthlyFestivalCopy') }}</p>
@@ -694,7 +693,7 @@ function goSearch() {
 
 .popular-scroll-section {
   padding: 86px 0;
-  background: var(--surface-strong);
+  background: transparent;
 }
 
 .popular-showcase {
@@ -924,7 +923,7 @@ function goSearch() {
 }
 
 .split-band {
-  background: var(--surface-strong);
+  background: transparent;
 }
 
 .hot-post-band {
@@ -938,16 +937,19 @@ function goSearch() {
   gap: 34px;
 }
 
-.hot-post-copy h2 {
+.hot-post-copy h2,
+.home-festival-header h2 {
   margin: 16px 0 12px;
-  font-size: 2.2rem;
+  font-size: 1.95rem;
   line-height: 1.16;
 }
 
-.hot-post-copy p {
+.hot-post-copy p,
+.home-festival-header p {
   max-width: 520px;
   margin: 0 0 22px;
   color: var(--muted);
+  font-size: 1rem;
   line-height: 1.7;
 }
 
@@ -1092,6 +1094,8 @@ function goSearch() {
 .home-bottom {
   display: grid;
   gap: 18px;
+  padding-top: 24px;
+  background: transparent;
 }
 
 .compact {
